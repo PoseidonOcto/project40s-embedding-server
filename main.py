@@ -131,21 +131,22 @@ def search(claims: list):
 
     search_params = {
         "metric_type": "COSINE",
-        "params": {}
+        "params": {"radius": 0.6}
     }
 
-    res = client.search(
+    responses = client.search(
         collection_name=COLLECTION_NAME,
         data=embed_claims(claims),
         limit=3,
         output_fields=['claim', 'author_name', 'author_url', 'review', 'url'],
         search_params=search_params
-
     )
+
+    assert len(claims) == len(responses)
 
     return {
         'status': 'success',
-        'data': res,
+        'data': [{'claim': claim, 'responses': response} for (claim, response) in zip(claims, responses)],
     }
 
 
