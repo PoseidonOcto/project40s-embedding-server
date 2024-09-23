@@ -3,7 +3,8 @@ from openai import OpenAI, RateLimitError
 import time
 from multiprocessing.dummy import Pool as ThreadPool
 from pymilvus import MilvusClient
-from flask import Flask
+from flask import Flask, request
+from markupsafe import escape
 
 app = Flask(__name__)
 
@@ -110,11 +111,23 @@ def hello_world():
     return "<p>Hello, World!</p>"
 
 
-def main(client):
+"""
+Response format loosely follows https://github.com/omniti-labs/jsend.
+"""
+
+
+def search(claims: list):
+    # Connect to Zilliz Cloud
+    client = MilvusClient(
+        # Public endpoint obtained from Zilliz Cloud
+        uri=URI,
+        token=TOKEN
+    )
+
     # Claim
     # query = "Incest is legal in New Jersey and Rhode Island."
     # query = "Shaquille O'Neal throws Tim Walz out of his Restaurant"
-    query = "drinking water on an empty stomach can make your face glow"
+    # query = "drinking water on an empty stomach can make your face glow"
 
     search_params = {
         "metric_type": "COSINE",
@@ -123,12 +136,45 @@ def main(client):
 
     res = client.search(
         collection_name=COLLECTION_NAME,
-        data=embed_claims([query]),
+        data=embed_claims(claims),
         limit=3,
+        output_fields=['claim', 'author_name', 'author_url', 'review', 'url'],
         search_params=search_params
+
     )
 
-    print(res)
+    return {
+        'status': 'success',
+        'data': res,
+    }
+
+
+@app.route("/embedding-single/<query>")
+def query_single(query):
+    # Just to be safe. Source: https://flask.palletsprojects.com/en/3.0.x/quickstart/#html-escaping
+    query = escape(query)
+    if query.isspace():
+        return {
+            'status': 'error',
+            'message': 'No query provided.',
+        }
+
+    # Note response will be a list with a single index.
+    return search([query])
+
+
+@app.route("/embedding", methods=["POST"])
+def query_multiple():
+    request_data = request.get_json()
+    if 'data' not in request_data:
+        return {
+            'status': 'error',
+            'message': 'No claims provided',
+        }
+
+    return search(request_data['data'])
+
+
 
     # -----------------
 
@@ -166,15 +212,5 @@ def main(client):
 
 
 if __name__ == '__main__':
-    # Connect to Zilliz Cloud and create a collection
-    CLIENT = MilvusClient(
-        # Public endpoint obtained from Zilliz Cloud
-        uri=URI,
-        token=TOKEN
-    )
-
-    reset_collection = False
-    if reset_collection:
-        CLIENT.drop_collection(COLLECTION_NAME)
-    else:
-        main(CLIENT)
+    search(["drinking water on an empty stomach can make your face glow"])
+    # CLIENT.drop_collection(COLLECTION_NAME)
