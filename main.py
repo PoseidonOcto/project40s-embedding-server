@@ -17,22 +17,17 @@ COLLECTION_NAME = 'claims'
 # 3. Set up the dimension of the embeddings.
 DIMENSION = 1536
 
-# 4. Set up the number of records to process.
-COUNT = 100
-
 # 5. Set up the connection parameters for your Zilliz Cloud cluster.
 URI = 'https://in03-4bf6e70f6c36dab.serverless.gcp-us-west1.cloud.zilliz.com'
 TOKEN = 'c8276ba3c7f4f1921f386b8d99fcf34f268fe89d00c320a5d679e4b943e09e01c6da86463a2ae370e07e208a297de1d585ae2aac'
-
-# Max length of claim
-# MAX_LEN = 200
 
 MODEL_NAME = "text-embedding-3-small"
 # Max tokens for text-embedding-3-small
 # Source: https://zilliz.com/ai-models/text-embedding-3-small
 MAX_TOKENS = 8191
 
-SLEEP_INCREMENT = 0.1
+SEARCH_BATCH_SIZE = 10  # Max batch size for zilliz api
+SEARCH_SIMILARITY_THRESHOLD = 0.6
 
 RAW_CLAIM_DATA = 'deco3801-data.json'
 
@@ -79,17 +74,15 @@ def openai_encoder(claims: list) -> list:
     return result
 
 
-"""
-Although parallel processing with more threads would significantly speeds up embedding, 
-it would cause us to exceed our rate limit on the API. Additionally, catching the rate
-limit error and retrying led to losing connection with the openai sdk.
- 
-I'm not sure why we kept losing connection, but it is an issue that arose when
-combining parallel processing, the openai sdk and 'time.sleep'.
-"""
-
-
 def embed_claims(claims: list) -> list:
+    """
+    Although parallel processing with more threads would significantly speeds up embedding,
+    it would cause us to exceed our rate limit on the API. Additionally, catching the rate
+    limit error and retrying led to losing connection with the openai sdk.
+
+    I'm not sure why we kept losing connection, but it is an issue that arose when
+    combining parallel processing, the openai sdk and 'time.sleep'.
+    """
     batches = batch_claims(claims)
 
     # Make the Pool of workers
@@ -108,15 +101,28 @@ def embed_claims(claims: list) -> list:
 
 @app.route("/")
 def hello_world():
-    return "<p>Hello, World!</p>"
+    return "<p>This is an api.</p>"
 
 
-"""
-Response format loosely follows https://github.com/omniti-labs/jsend.
-"""
+def search_batch(client, embedded_claims: list):
+    assert len(embedded_claims) <= 10
+
+    return client.search(
+        collection_name=COLLECTION_NAME,
+        data=embedded_claims,
+        limit=3,
+        output_fields=['claim', 'author_name', 'author_url', 'review', 'url'],
+        search_params={
+            "metric_type": "COSINE",
+            "params": {"radius": SEARCH_SIMILARITY_THRESHOLD}
+        }
+    )
 
 
 def search(claims: list):
+    """
+    Response format loosely follows https://github.com/omniti-labs/jsend.
+    """
     # Connect to Zilliz Cloud
     client = MilvusClient(
         # Public endpoint obtained from Zilliz Cloud
@@ -124,23 +130,24 @@ def search(claims: list):
         token=TOKEN
     )
 
-    # Claim
-    # query = "Incest is legal in New Jersey and Rhode Island."
-    # query = "Shaquille O'Neal throws Tim Walz out of his Restaurant"
-    # query = "drinking water on an empty stomach can make your face glow"
+    # Get embedded claims
+    embedded_claims = embed_claims(claims)
 
-    search_params = {
-        "metric_type": "COSINE",
-        "params": {"radius": 0.6}
-    }
+    # Send embedded claims in batches
+    batches = [embedded_claims[i:i + SEARCH_BATCH_SIZE] for i in range(0, len(embedded_claims), SEARCH_BATCH_SIZE)]
 
-    responses = client.search(
-        collection_name=COLLECTION_NAME,
-        data=embed_claims(claims),
-        limit=3,
-        output_fields=['claim', 'author_name', 'author_url', 'review', 'url'],
-        search_params=search_params
-    )
+    # Make the Pool of workers
+    pool = ThreadPool(len(batches))
+
+    # Encode on seperate threads and return the results
+    results_by_thread = pool.map(lambda batch: search_batch(client, batch), batches)
+
+    # Close the pool and wait for the work to finish
+    pool.close()
+    pool.join()
+
+    # Flatten results for each thread
+    responses = [result for thread_results in results_by_thread for result in thread_results]
 
     assert len(claims) == len(responses)
 
@@ -176,42 +183,6 @@ def query_multiple():
     return search(request_data['data'])
 
 
-
-    # -----------------
-
-    # Search for similar titles
-    # def search(text):
-    #     res = collection.search(
-    #         data=[embed(text)],
-    #         anns_field='embedding',
-    #         param={"metric_type": "L2", "params": {"nprobe": 10}},
-    #         output_fields=['title'],
-    #         limit=5,
-    #     )
-    #
-    #     ret = []
-    #
-    #     for hits in res:
-    #         for hit in hits:
-    #             row = []
-    #             row.extend([hit.id, hit.distance, hit.entity.get('title')])
-    #             ret.append(row)
-    #
-    #     return ret
-    #
-    #
-    # search_terms = [
-    #     'self-improvement',
-    #     'landscape',
-    # ]
-    #
-    # for x in search_terms:
-    #     print('Search term: ', x)
-    #     for x in search(x):
-    #         print(x)
-    #     print()
-
-
 if __name__ == '__main__':
-    search(["drinking water on an empty stomach can make your face glow"])
-    # CLIENT.drop_collection(COLLECTION_NAME)
+    # Will not run when launched as server.
+    print(search(["drinking water on an empty stomach can make your face glow"] * 12))
