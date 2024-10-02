@@ -3,7 +3,7 @@ from openai import OpenAI, RateLimitError
 import time
 from multiprocessing.dummy import Pool as ThreadPool
 from pymilvus import MilvusClient
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
 from enum import Enum
@@ -12,6 +12,7 @@ app = Flask(__name__)
 
 OPENAI_API_KEY = 'sk-svcacct-JHSMzMYNZRVwWuQk3kJ3d0K0F3EuJZP7XbCoI9lB6A6Q6zxbzL4F7PSjumV923F1uMqitGWgjuFV-sDsT3BlbkFJ2YGDJYbL73J-FXGLAZf_DgLACHHlJgH8OiWDTOnXPKyIjtCGUdPALJ3e4g5iIigyHoceAjm_yVgKGbcA'
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY)
+DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
 
 # 2. Set up the name of the collection to be created.
 COLLECTION_NAME = 'claims'
@@ -34,7 +35,8 @@ DEFAULT_SEARCH_SIMILARITY_THRESHOLD = 0.6
 RAW_CLAIM_DATA = 'deco3801-data.json'
 
 # 6. Set up the connection parameters for your database.
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
 db = SQLAlchemy(app)
 
 # Define the Fact table (Table 1)
@@ -46,7 +48,7 @@ class Fact(db.Model):
     
     url = db.Column(db.Text, nullable=False)
     triggering_text = db.Column(db.Text, nullable=False)
-    date_triggered = db.Column(db.Integer, nullable=False)  # milliseconds past epoch
+    date_triggered = db.Column(db.Integer, nullable=False) 
 
 # Define the Interaction table (Table 2)
 class Interaction(db.Model):
@@ -55,8 +57,8 @@ class Interaction(db.Model):
     user_id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(255), primary_key=True)
     
-    duration_spent = db.Column(db.Integer, nullable=False)  # duration in seconds
-    date_spent = db.Column(db.Integer, nullable=False)  # milliseconds past epoch
+    duration_spent = db.Column(db.Integer, nullable=False) 
+    date_spent = db.Column(db.Integer, nullable=False)  
     clicks = db.Column(db.Integer, nullable=False)
 
 # Define the PoliticalLeaning enum
@@ -72,7 +74,7 @@ class PoliticalLeaning(db.Model):
     __tablename__ = 'political_leaning'
     url = db.Column(db.String(255), primary_key=True)
     leaning = db.Column(db.Enum(PoliticalLeaningEnum), nullable=False)
-
+    
 # Intialise the database
 with app.app_context():
     db.create_all()
