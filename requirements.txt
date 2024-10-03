@@ -42,3 +42,5 @@ tzdata==2024.1
 ujson==5.10.0
 urllib3==2.2.3
 Werkzeug==3.0.4
+python3-sqlalchemy=sqlalchemy
+psycopg2-binary==2.9.3
