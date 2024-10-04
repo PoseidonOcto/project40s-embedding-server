@@ -10,7 +10,7 @@ from enum import Enum
 
 app = Flask(__name__)
 
-OPENAI_API_KEY = 'sk-svcacct-JHSMzMYNZRVwWuQk3kJ3d0K0F3EuJZP7XbCoI9lB6A6Q6zxbzL4F7PSjumV923F1uMqitGWgjuFV-sDsT3BlbkFJ2YGDJYbL73J-FXGLAZf_DgLACHHlJgH8OiWDTOnXPKyIjtCGUdPALJ3e4g5iIigyHoceAjm_yVgKGbcA'  # Use your own Open AI API Key here
+OPENAI_API_KEY = 'sk-svcacct-JHSMzMYNZRVwWuQk3kJ3d0K0F3EuJZP7XbCoI9lB6A6Q6zxbzL4F7PSjumV923F1uMqitGWgjuFV-sDsT3BlbkFJ2YGDJYbL73J-FXGLAZf_DgLACHHlJgH8OiWDTOnXPKyIjtCGUdPALJ3e4g5iIigyHoceAjm_yVgKGbcA'
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY)
 
 # 2. Set up the name of the collection to be created.
@@ -29,7 +29,7 @@ MODEL_NAME = "text-embedding-3-small"
 MAX_TOKENS = 8191
 
 SEARCH_BATCH_SIZE = 10  # Max batch size for zilliz api
-SEARCH_SIMILARITY_THRESHOLD = 0.6
+DEFAULT_SEARCH_SIMILARITY_THRESHOLD = 0.6
 
 RAW_CLAIM_DATA = 'deco3801-data.json'
 
@@ -149,7 +149,7 @@ def hello_world():
     return "<p>This is an api.</p>"
 
 
-def search_batch(client, embedded_claims: list):
+def search_batch(client, embedded_claims: list, similarity_threshold: float):
     assert len(embedded_claims) <= 10
 
     return client.search(
@@ -159,12 +159,12 @@ def search_batch(client, embedded_claims: list):
         output_fields=['claim', 'author_name', 'author_url', 'review', 'url'],
         search_params={
             "metric_type": "COSINE",
-            "params": {"radius": SEARCH_SIMILARITY_THRESHOLD}
+            "params": {"radius": similarity_threshold}
         }
     )
 
 
-def search(claims: list):
+def search(claims: list, similarity_threshold: float):
     """
     Response format loosely follows https://github.com/omniti-labs/jsend.
     """
@@ -178,14 +178,14 @@ def search(claims: list):
     # Get embedded claims
     embedded_claims = embed_claims(claims)
 
-    # Send embedded claims in batches
+    # Batch the embedded claims for sending
     batches = [embedded_claims[i:i + SEARCH_BATCH_SIZE] for i in range(0, len(embedded_claims), SEARCH_BATCH_SIZE)]
 
     # Make the Pool of workers
     pool = ThreadPool(len(batches))
 
     # Encode on seperate threads and return the results
-    results_by_thread = pool.map(lambda batch: search_batch(client, batch), batches)
+    results_by_thread = pool.map(lambda batch: search_batch(client, batch, similarity_threshold), batches)
 
     # Close the pool and wait for the work to finish
     pool.close()
@@ -213,7 +213,7 @@ def query_single(query):
         }
 
     # Note response will be a list with a single index.
-    return search([query])
+    return search([query], DEFAULT_SEARCH_SIMILARITY_THRESHOLD)
 
 
 @app.route("/embedding", methods=["POST"])
@@ -224,9 +224,15 @@ def query_multiple():
             'status': 'error',
             'message': 'No claims provided',
         }
+    if 'similarity_threshold' not in request_data:
+        return {
+            'status': 'error',
+            'message': 'No similarity threshold provided',
+        }
 
-    return search(request_data['data'])
+    return search(request_data['data'], request_data['similarity_threshold'])
 
 if __name__ == '__main__':
     # Will not run when launched as server.
-    print(search(["drinking water on an empty stomach can make your face glow"] * 12))
+    print(search(["drinking water on an empty stomach can make your face glow"] * 12,
+                 DEFAULT_SEARCH_SIMILARITY_THRESHOLD))
