@@ -9,6 +9,11 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from enum import Enum
 
+"""
+API Server handling data storage and 'similar claim detection' for project40s.
+Note that this file should not be made public while it holds private API keys.
+Private API keys could instead be stored in environment variables on Railway if this repo must be made public.
+"""
 app = Flask(__name__)
 
 # Zilliz Cloud cluster vector database
@@ -35,9 +40,6 @@ RAW_CLAIM_DATA = 'deco3801-data.json'
 DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
-
-
-# DB = SQLAlchemy(app)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,7 +118,7 @@ def get_or_throw_enum(request_data, key, enum):
         raise InvalidRequest(f'Request is missing the field: "{key}"')
 
     try:
-        return enum[request_data[key.upper()]]
+        return enum[request_data[key].upper()]
     except KeyError:
         raise InvalidRequest(
             f"The request field '{key}' has value '{request_data[key]}' which is not a valid member of {str(enum)}")
