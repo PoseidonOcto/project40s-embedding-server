@@ -8,7 +8,7 @@ from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
 from enum import Enum
 
-APP = Flask(__name__)
+app = Flask(__name__)
 
 # Zilliz Cloud cluster vector database
 URI = 'https://in03-4bf6e70f6c36dab.serverless.gcp-us-west1.cloud.zilliz.com'
@@ -32,9 +32,9 @@ RAW_CLAIM_DATA = 'deco3801-data.json'
 
 # Postgres database hosted on railway, managed via Flask-SQLAlchemy.
 DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
-APP.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
-DB = SQLAlchemy(APP)
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
+DB = SQLAlchemy(app)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,7 +83,7 @@ class PoliticalLeaning(DB.Model):
 
 
 # Intialise the database
-with APP.app_context():
+with app.app_context():
     DB.create_all()
 
 
@@ -100,7 +100,7 @@ def get_or_throw(request_data, key):
     raise MissingField(f'Request is missing the field: "{key}"')
 
 
-@APP.route("/users/create", methods=["POST"])
+@app.route("/users/create", methods=["POST"])
 def user_create():
     request_data = request.get_json()
     try:
@@ -240,7 +240,7 @@ def search(claims: list, similarity_threshold: float):
     }
 
 
-@APP.route("/embedding-single/<query>")
+@app.route("/embedding-single/<query>")
 def query_single(query):
     # Just to be safe. Source: https://flask.palletsprojects.com/en/3.0.x/quickstart/#html-escaping
     query = escape(query)
@@ -254,7 +254,7 @@ def query_single(query):
     return search([query], DEFAULT_SEARCH_SIMILARITY_THRESHOLD)
 
 
-@APP.route("/embedding", methods=["POST"])
+@app.route("/embedding", methods=["POST"])
 def query_multiple():
     request_data = request.get_json()
     if 'data' not in request_data:
@@ -271,7 +271,7 @@ def query_multiple():
     return search(request_data['data'], request_data['similarity_threshold'])
 
 
-@APP.route("/")
+@app.route("/")
 def hello_world():
     return "<p>This is an api.</p>"
 
