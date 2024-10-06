@@ -8,6 +8,7 @@ from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from enum import Enum
+import os
 
 """
 API Server handling data storage and 'similar claim detection' for project40s.
@@ -37,8 +38,8 @@ DEFAULT_SEARCH_SIMILARITY_THRESHOLD = 0.6
 RAW_CLAIM_DATA = 'deco3801-data.json'
 
 # Postgres database hosted on railway, managed via Flask-SQLAlchemy.
-DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+# DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
 
 
