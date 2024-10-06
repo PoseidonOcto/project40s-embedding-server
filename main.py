@@ -8,60 +8,38 @@ from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
 from enum import Enum
 
-app = Flask(__name__)
+APP = Flask(__name__)
 
-OPENAI_API_KEY = 'sk-svcacct-JHSMzMYNZRVwWuQk3kJ3d0K0F3EuJZP7XbCoI9lB6A6Q6zxbzL4F7PSjumV923F1uMqitGWgjuFV-sDsT3BlbkFJ2YGDJYbL73J-FXGLAZf_DgLACHHlJgH8OiWDTOnXPKyIjtCGUdPALJ3e4g5iIigyHoceAjm_yVgKGbcA'
-OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY)
-DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
-
-# 2. Set up the name of the collection to be created.
-COLLECTION_NAME = 'claims'
-
-# 3. Set up the dimension of the embeddings.
-DIMENSION = 1536
-
-# 5. Set up the connection parameters for your Zilliz Cloud cluster.
+# Zilliz Cloud cluster vector database
 URI = 'https://in03-4bf6e70f6c36dab.serverless.gcp-us-west1.cloud.zilliz.com'
 TOKEN = 'c8276ba3c7f4f1921f386b8d99fcf34f268fe89d00c320a5d679e4b943e09e01c6da86463a2ae370e07e208a297de1d585ae2aac'
+# Set up the name of the collection to be created.
+COLLECTION_NAME = 'claims'
+# Set up the dimension of the embeddings.
+DIMENSION = 1536
 
+# OpenAI embedding API
+OPENAI_API_KEY = 'sk-svcacct-JHSMzMYNZRVwWuQk3kJ3d0K0F3EuJZP7XbCoI9lB6A6Q6zxbzL4F7PSjumV923F1uMqitGWgjuFV-sDsT3BlbkFJ2YGDJYbL73J-FXGLAZf_DgLACHHlJgH8OiWDTOnXPKyIjtCGUdPALJ3e4g5iIigyHoceAjm_yVgKGbcA'
+OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY)
 MODEL_NAME = "text-embedding-3-small"
 # Max tokens for text-embedding-3-small
 # Source: https://zilliz.com/ai-models/text-embedding-3-small
 MAX_TOKENS = 8191
 
-SEARCH_BATCH_SIZE = 10  # Max batch size for zilliz api
+SEARCH_BATCH_SIZE = 10  # Max batch size for Zilliz api
 DEFAULT_SEARCH_SIMILARITY_THRESHOLD = 0.6
-
 RAW_CLAIM_DATA = 'deco3801-data.json'
 
-# 6. Set up the connection parameters for your database.
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
-db = SQLAlchemy(app)
+# Postgres database hosted on railway, managed via Flask-SQLAlchemy.
+DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
+APP.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
+DB = SQLAlchemy(APP)
 
-# Define the Fact table (Table 1)
-class Fact(db.Model):
-    __tablename__ = 'fact'
-    # Composite key: 'id of user' and 'id of claim'
-    user_id = db.Column(db.Integer, primary_key=True)
-    claim_id = db.Column(db.Integer, primary_key=True)
-    
-    url = db.Column(db.Text, nullable=False)
-    triggering_text = db.Column(db.Text, nullable=False)
-    date_triggered = db.Column(db.Integer, nullable=False) 
 
-# Define the Interaction table (Table 2)
-class Interaction(db.Model):
-    __tablename__ = 'interaction'
-    # Composite key: 'id of user' and 'url'
-    user_id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String(255), primary_key=True)
-    
-    duration_spent = db.Column(db.Integer, nullable=False) 
-    date_spent = db.Column(db.Integer, nullable=False)  
-    clicks = db.Column(db.Integer, nullable=False)
-
-# Define the PoliticalLeaning enum
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Database creation
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class PoliticalLeaningEnum(Enum):
     LEFT = 'left'
     CENTER_LEFT = 'center_left'
@@ -69,15 +47,78 @@ class PoliticalLeaningEnum(Enum):
     CENTER_RIGHT = 'center_right'
     RIGHT = 'right'
 
-# Define the PoliticalLeaning table (Table 3)
-class PoliticalLeaning(db.Model):
+
+class Fact(DB.Model):
+    """ Table storing 'fact-checks' the user has triggered when using the extension. """
+    __tablename__ = 'fact'
+    # Composite key: 'id of user' and 'id of claim'
+    user_id = DB.Column(DB.Integer, primary_key=True)
+    claim_id = DB.Column(DB.Integer, primary_key=True)
+
+    url = DB.Column(DB.Text, nullable=False)
+    triggering_text = DB.Column(DB.Text, nullable=False)
+    date_triggered = DB.Column(DB.Integer, nullable=False)
+
+
+class Interaction(DB.Model):
+    """ Table storing user's media consumption. """
+    __tablename__ = 'interaction'
+    # Composite key: 'id of user' and 'url'
+    user_id = DB.Column(DB.Integer, primary_key=True)
+    url = DB.Column(DB.String(255), primary_key=True)
+
+    duration_spent = DB.Column(DB.Integer, nullable=False)
+    date_spent = DB.Column(DB.Integer, nullable=False)
+    clicks = DB.Column(DB.Integer, nullable=False)
+
+
+class PoliticalLeaning(DB.Model):
+    """ Table storing political leanings of various websites, sourced from TODO """
     __tablename__ = 'political_leaning'
-    url = db.Column(db.String(255), primary_key=True)
-    leaning = db.Column(db.Enum(PoliticalLeaningEnum), nullable=False)
-    
+
+    # Primary key: 'url'
+    url = DB.Column(DB.String(255), primary_key=True)
+
+    leaning = DB.Column(DB.Enum(PoliticalLeaningEnum), nullable=False)
+
+
 # Intialise the database
-with app.app_context():
-    db.create_all()
+with APP.app_context():
+    DB.create_all()
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# API Routes and helper functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class MissingField(Exception):
+    pass
+
+
+def get_or_throw(request_data, key):
+    if key in request_data:
+        return request_data[key]
+    raise MissingField(f'Request is missing the field: "{key}"')
+
+
+@APP.route("/users/create", methods=["POST"])
+def user_create():
+    request_data = request.get_json()
+    try:
+        entry = PoliticalLeaning.query(
+            url=get_or_throw(request_data, 'url'),
+            leaning=get_or_throw(request_data, 'leaning'),
+        )
+        DB.session.add(entry)
+        DB.session.commit()
+        return {
+            'status': 'success',
+        }
+    except MissingField as e:
+        return {
+            'status': 'error',
+            'message': str(e),
+        }
+
 
 def batch_claims(claims: list) -> list[list]:
     token_encoder = tiktoken.encoding_for_model(MODEL_NAME)
@@ -146,11 +187,6 @@ def embed_claims(claims: list) -> list:
     return [result for thread_results in results for result in thread_results]
 
 
-@app.route("/")
-def hello_world():
-    return "<p>This is an api.</p>"
-
-
 def search_batch(client, embedded_claims: list, similarity_threshold: float):
     assert len(embedded_claims) <= 10
 
@@ -204,7 +240,7 @@ def search(claims: list, similarity_threshold: float):
     }
 
 
-@app.route("/embedding-single/<query>")
+@APP.route("/embedding-single/<query>")
 def query_single(query):
     # Just to be safe. Source: https://flask.palletsprojects.com/en/3.0.x/quickstart/#html-escaping
     query = escape(query)
@@ -218,7 +254,7 @@ def query_single(query):
     return search([query], DEFAULT_SEARCH_SIMILARITY_THRESHOLD)
 
 
-@app.route("/embedding", methods=["POST"])
+@APP.route("/embedding", methods=["POST"])
 def query_multiple():
     request_data = request.get_json()
     if 'data' not in request_data:
@@ -233,6 +269,12 @@ def query_multiple():
         }
 
     return search(request_data['data'], request_data['similarity_threshold'])
+
+
+@APP.route("/")
+def hello_world():
+    return "<p>This is an api.</p>"
+
 
 if __name__ == '__main__':
     # Will not run when launched as server.
