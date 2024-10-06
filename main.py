@@ -6,6 +6,7 @@ from pymilvus import MilvusClient
 from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 from enum import Enum
 
 app = Flask(__name__)
@@ -34,12 +35,22 @@ RAW_CLAIM_DATA = 'deco3801-data.json'
 DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
-DB = SQLAlchemy(app)
+
+
+# DB = SQLAlchemy(app)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Database creation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class Base(DeclarativeBase):
+    pass
+
+
+DB = SQLAlchemy(model_class=Base)
+DB.init_app(app)
+
+
 class PoliticalLeaningEnum(Enum):
     LEFT = 'left'
     CENTER_LEFT = 'center_left'
