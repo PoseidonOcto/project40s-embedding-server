@@ -115,7 +115,7 @@ def get_or_throw(request_data, key):
 def user_create():
     request_data = request.get_json()
     try:
-        entry = PoliticalLeaning.query(
+        entry = PoliticalLeaning(
             url=get_or_throw(request_data, 'url'),
             leaning=get_or_throw(request_data, 'leaning'),
         )
