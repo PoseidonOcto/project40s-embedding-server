@@ -3,7 +3,7 @@ from openai import OpenAI, RateLimitError
 import time
 from multiprocessing.dummy import Pool as ThreadPool
 from pymilvus import MilvusClient
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
 from enum import Enum
