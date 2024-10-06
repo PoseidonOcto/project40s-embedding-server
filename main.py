@@ -116,10 +116,10 @@ def get_or_throw_enum(request_data, key, enum):
         raise InvalidRequest(f'Request is missing the field: "{key}"')
 
     try:
-        return enum[request_data[key]]
+        return enum[request_data[key.upper()]]
     except KeyError:
         raise InvalidRequest(
-            f'The request field "{key}" has value {request_data[key]} which is not a valid member of {str(enum)}')
+            f"The request field '{key}' has value '{request_data[key]}' which is not a valid member of {str(enum)}")
 
 
 @app.route("/users/create", methods=["POST"])
