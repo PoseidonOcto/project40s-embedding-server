@@ -101,14 +101,25 @@ with app.app_context():
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # API Routes and helper functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-class MissingField(Exception):
+class InvalidRequest(Exception):
     pass
 
 
 def get_or_throw(request_data, key):
     if key in request_data:
         return request_data[key]
-    raise MissingField(f'Request is missing the field: "{key}"')
+    raise InvalidRequest(f'Request is missing the field: "{key}"')
+
+
+def get_or_throw_enum(request_data, key, enum):
+    if key not in request_data:
+        raise InvalidRequest(f'Request is missing the field: "{key}"')
+
+    try:
+        return enum[request_data[key]]
+    except KeyError:
+        raise InvalidRequest(
+            f'The request field "{key}" has value {request_data[key]} which is not a valid member of {str(enum)}')
 
 
 @app.route("/users/create", methods=["POST"])
@@ -117,14 +128,14 @@ def user_create():
     try:
         entry = PoliticalLeaning(
             url=get_or_throw(request_data, 'url'),
-            leaning=get_or_throw(request_data, 'leaning'),
+            leaning=get_or_throw_enum(request_data, 'leaning', PoliticalLeaningEnum),
         )
         DB.session.add(entry)
         DB.session.commit()
         return {
             'status': 'success',
         }
-    except MissingField as e:
+    except InvalidRequest as e:
         return {
             'status': 'error',
             'message': str(e),
