@@ -11,7 +11,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from enum import Enum
 import os
-from dataclasses import dataclass
 
 from media_bias_insert import get_data_by_url
 
@@ -76,7 +75,6 @@ class PoliticalLeaningEnum(Enum):
     SATIRE = 'SATIRE'
 
 
-@dataclass
 class Fact(DB.Model):
     """ Table storing 'fact-checks' the user has triggered when using the extension. """
     __tablename__ = 'fact'
@@ -89,7 +87,6 @@ class Fact(DB.Model):
     date_triggered = DB.Column(DB.Integer, nullable=False)
 
 
-@dataclass
 class Interaction(DB.Model):
     """ Table storing user's media consumption. """
     __tablename__ = 'interaction'
@@ -102,7 +99,6 @@ class Interaction(DB.Model):
     clicks = DB.Column(DB.Integer, nullable=False)
 
 
-@dataclass
 class PoliticalLeaning(DB.Model):
     """ Table storing political leanings of various websites, sourced from TODO """
     __tablename__ = 'political_leaning'
@@ -245,10 +241,11 @@ def user_create():
 @app.route("/get_all", methods=["POST"])
 def get_all_data():
     try:
-        result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
+        result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url))
+        formatted_result = [dict(row.items()) for row in result]
         return {
             'status': 'success',
-            'data': result,
+            'data': formatted_result,
         }
     except InvalidRequest as e:
         return {
