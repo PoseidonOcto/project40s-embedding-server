@@ -153,6 +153,8 @@ def handle_invalid_request(func):
             'data': data
         }
 
+    # Renaming the function name (prevents bug - see: https://tinyurl.com/2b35tnvm)
+    wrapper.__name__ = func.__name__
     return wrapper
 
 
