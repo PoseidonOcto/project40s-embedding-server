@@ -80,7 +80,7 @@ class Fact(DB.Model):
     """ Table storing 'fact-checks' the user has triggered when using the extension. """
     __tablename__ = 'fact'
     # Composite key: 'id of user', 'id of claim', 'url', and 'triggering_text'
-    user_id = DB.Column(DB.Integer, primary_key=True)
+    user_id = DB.Column(DB.Text, primary_key=True)
     claim_id = DB.Column(DB.Integer, primary_key=True)
     url = DB.Column(DB.Text, primary_key=True)
     triggering_text = DB.Column(DB.Text, primary_key=True)
@@ -239,7 +239,7 @@ def get_all_data():
     return [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
 
 
-def get_user_id(token: str) -> int:
+def get_user_id(token: str) -> str:
     url = 'https://www.googleapis.com/oauth2/v2/userinfo'
     headers = {
         'Authorization': 'Bearer ' + token,
@@ -250,7 +250,7 @@ def get_user_id(token: str) -> int:
     if not response.ok:
         raise InvalidRequest(f'Google OAuth API responded with code "{response.status_code}".')
 
-    return int(response.json()['id'])
+    return response.json()['id']
 
 
 @app.route("/add_fact", methods=["POST"])
@@ -281,8 +281,8 @@ def add_fact():
         if result is None:
             DB.session.add(new_data)
         else:
-            # Todo check is later date.
-            result.Fact.latest_date_triggered = latest_date_triggered
+            if result.Fact.latest_date_triggered < int(latest_date_triggered):
+                result.Fact.latest_date_triggered = latest_date_triggered
 
     return None
 
