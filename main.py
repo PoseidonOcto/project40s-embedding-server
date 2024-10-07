@@ -259,6 +259,50 @@ def get_user_id(token: str) -> str:
 def add_fact():
     request_data = request.get_json()
     with rollback_on_err():
+        test = get_or_throw(request_data, 'claim_id')
+        if type(test) == str:
+            print("It comes out as a string")
+        elif type(test) == int:
+            print("It comes out as a int")
+        else:
+            print("idk")
+
+
+        new_data = Fact(
+            user_id=get_user_id(get_or_throw(request_data, 'oauth_token')),
+            claim_id=int(get_or_throw(request_data, 'claim_id')),
+            url=get_or_throw(request_data, 'url'),
+            triggering_text=get_or_throw(request_data, 'triggering_text'),
+            latest_date_triggered=int(get_or_throw(request_data, 'latest_date_triggered')),
+        )
+
+        result = DB.session.execute(DB.select(Fact).where(
+            and_(
+                Fact.user_id == new_data.user_id,
+                Fact.claim_id == new_data.claim_id,
+                Fact.url == new_data.url,
+                Fact.triggering_text == new_data.triggering_text
+            )
+        )).one_or_none()
+
+        if result is None:
+            DB.session.add(new_data)
+        else:
+            # Update entry to the one with the latest date.
+            if result.Fact.latest_date_triggered < new_data.latest_date_triggered:
+                result.Fact.latest_date_triggered = new_data.latest_date_triggered
+
+    return None
+
+
+@app.route("/add_facts", methods=["POST"])
+@handle_invalid_request
+def add_facts():
+    request_data = request.get_json()
+    with rollback_on_err():
+        user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+        data = get_user_id(get_or_throw(request_data, 'data'))
+
         new_data = Fact(
             user_id=get_user_id(get_or_throw(request_data, 'oauth_token')),
             claim_id=int(get_or_throw(request_data, 'claim_id')),
