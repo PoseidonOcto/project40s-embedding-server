@@ -45,7 +45,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress wa
 # This API endpoint should not be accessible to public.
 INSERT_MEDIA_BIAS_DATA_PASSWORD = "aOf3g44vpogo"
 INSERT_MEDIA_BIAS_RAW_DATA = "data/media_bias.json"
-MEDIA_BIAS_TABLE_NAME = "political_leaning"
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -160,8 +159,8 @@ def insert_media_bias_data():
         for bias_rating in data.values():
             assert bias_rating in valid_bias_ratings
 
-
-        DB.drop_all(bind_key=MEDIA_BIAS_TABLE_NAME)
+        # Delete all entries in table
+        PoliticalLeaning.query.delete()
 
         # for bias_rating in data.values():
         #     entry = PoliticalLeaning(
@@ -171,11 +170,7 @@ def insert_media_bias_data():
         #     DB.session.add(entry)
         #     DB.session.commit()
 
-
-
-
-
-        print(set(data.values()))
+        # print(set(data.values()))
         # for x in data.keys():
         #     if x[0:3] != 'www':
         #         print(x)
