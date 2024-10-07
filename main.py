@@ -9,6 +9,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from enum import Enum
 
+from media_bias_insert import get_data_by_url
+
 """
 API Server handling data storage and 'similar claim detection' for project40s.
 Note that this file should not be made public while it holds private API keys.
@@ -34,12 +36,16 @@ MAX_TOKENS = 8191
 
 SEARCH_BATCH_SIZE = 10  # Max batch size for Zilliz api
 DEFAULT_SEARCH_SIMILARITY_THRESHOLD = 0.6
-RAW_CLAIM_DATA = 'deco3801-data.json'
 
 # Postgres database hosted on railway, managed via Flask-SQLAlchemy.
 DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
+
+# This API endpoint should not be accessible to public.
+INSERT_MEDIA_BIAS_DATA_PASSWORD = "aOf3g44vpogo"
+INSERT_MEDIA_BIAS_RAW_DATA = "data/media_bias.json"
+MEDIA_BIAS_TABLE_NAME = "political_leaning"
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,11 +60,17 @@ DB.init_app(app)
 
 
 class PoliticalLeaningEnum(Enum):
-    LEFT = 'left'
-    CENTER_LEFT = 'center_left'
-    CENTER = 'center'
-    CENTER_RIGHT = 'center_right'
-    RIGHT = 'right'
+    """ The keys of this enum must exactly match their corresponding value. """
+    EXTREME_LEFT = 'EXTREME_LEFT'
+    LEFT = 'LEFT'
+    LEFT_CENTER = 'LEFT_CENTER'
+    CENTER = 'CENTER'
+    RIGHT_CENTER = 'RIGHT_CENTER'
+    RIGHT = 'RIGHT'
+    EXTREME_RIGHT = 'EXTREME_RIGHT'
+    CONSPIRACY = 'CONSPIRACY'
+    PRO_SCIENCE = 'PRO_SCIENCE'
+    SATIRE = 'SATIRE'
 
 
 class Fact(DB.Model):
@@ -118,10 +130,55 @@ def get_or_throw_enum(request_data, key, enum):
         raise InvalidRequest(f'Request is missing the field: "{key}"')
 
     try:
-        return enum[request_data[key].upper()]
+        return enum[request_data[key]]
     except KeyError:
         raise InvalidRequest(
             f"The request field '{key}' has value '{request_data[key]}' which is not a valid member of {str(enum)}")
+
+
+@app.route("/bias", methods=["POST"])
+def insert_media_bias_data_endpoint():
+    request_data = request.get_json()
+    try:
+        if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
+            raise InvalidRequest('The password provided was incorrect.')
+    except InvalidRequest as e:
+        return {
+            'status': 'error',
+            'message': str(e),
+        }
+
+    insert_media_bias_data()
+
+
+def insert_media_bias_data():
+    with open(INSERT_MEDIA_BIAS_RAW_DATA) as f:
+        data = get_data_by_url(f)
+
+        # Verify all bias ratings have been captured in schema
+        valid_bias_ratings = set([x.value for x in PoliticalLeaningEnum])
+        for bias_rating in data.values():
+            assert bias_rating in valid_bias_ratings
+
+
+        DB.drop_all(bind_key=MEDIA_BIAS_TABLE_NAME)
+
+        # for bias_rating in data.values():
+        #     entry = PoliticalLeaning(
+        #         url=get_or_throw(request_data, 'url'),
+        #         leaning=get_or_throw_enum(request_data, 'leaning', PoliticalLeaningEnum),
+        #     )
+        #     DB.session.add(entry)
+        #     DB.session.commit()
+
+
+
+
+
+        print(set(data.values()))
+        # for x in data.keys():
+        #     if x[0:3] != 'www':
+        #         print(x)
 
 
 @app.route("/users/create", methods=["POST"])
