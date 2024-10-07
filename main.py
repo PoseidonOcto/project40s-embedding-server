@@ -85,7 +85,7 @@ class Fact(DB.Model):
     url = DB.Column(DB.Text, primary_key=True)
     triggering_text = DB.Column(DB.Text, primary_key=True)
 
-    latest_date_triggered = DB.Column(DB.Integer, nullable=False)
+    latest_date_triggered = DB.Column(DB.BigInteger, nullable=False)
 
 
 class Interaction(DB.Model):
