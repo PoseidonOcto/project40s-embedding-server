@@ -260,10 +260,10 @@ def add_fact():
     with rollback_on_err():
         # TODO can we inline?
         user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
-        claim_id = get_or_throw(request_data, 'claim_id'),
+        claim_id = int(get_or_throw(request_data, 'claim_id')),
         url = get_or_throw(request_data, 'url'),
         triggering_text = get_or_throw(request_data, 'triggering_text'),
-        latest_date_triggered = get_or_throw(request_data, 'latest_date_triggered')
+        latest_date_triggered = int(get_or_throw(request_data, 'latest_date_triggered'))
 
         new_data = Fact(
             user_id=user_id,
@@ -282,7 +282,7 @@ def add_fact():
             DB.session.add(new_data)
         else:
             # Update entry to the one with the latest date.
-            if result.Fact.latest_date_triggered < int(latest_date_triggered):
+            if result.Fact.latest_date_triggered < latest_date_triggered:
                 result.Fact.latest_date_triggered = latest_date_triggered
 
     return None
