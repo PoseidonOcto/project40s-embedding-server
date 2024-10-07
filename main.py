@@ -245,7 +245,7 @@ def user_create():
 @app.route("/get_all", methods=["POST"])
 def get_all_data():
     try:
-        result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).scalars().all()
+        result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
         return {
             'status': 'success',
             'data': result,
