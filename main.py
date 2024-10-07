@@ -44,7 +44,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
 
 # This API endpoint should not be accessible to public.
-INSERT_MEDIA_BIAS_DATA_PASSWORD = "aOf3g44vpogo"
+INSERT_MEDIA_BIAS_DATA_PASSWORD = os.environ['DATABASE_PRIVILEGED_OP_PASSWORD']
 INSERT_MEDIA_BIAS_RAW_DATA = "data/media_bias.json"
 
 
