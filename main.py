@@ -115,7 +115,7 @@ with app.app_context():
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# API Routes and helper functions
+# Database - API Routes and helper functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class InvalidRequest(Exception):
     pass
@@ -136,6 +136,32 @@ def get_or_throw_enum(request_data, key, enum):
     except KeyError:
         raise InvalidRequest(
             f"The request field '{key}' has value '{request_data[key]}' which is not a valid member of {str(enum)}")
+
+
+def check_password(request_data):
+    try:
+        if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
+            raise InvalidRequest('The password provided was incorrect.')
+    except InvalidRequest as e:
+        return {
+            'status': 'error',
+            'message': str(e),
+        }
+
+    return {
+        'status': 'success'
+    }
+
+
+@contextmanager
+def rollback_on_err():
+    try:
+        yield
+    except Exception:
+        DB.session.rollback()
+        raise
+    else:
+        DB.session.commit()
 
 
 @app.route("/bias", methods=["POST"])
@@ -164,32 +190,6 @@ def insert_media_bias_data():
 
     return {
         'status': 'success',
-    }
-
-
-@contextmanager
-def rollback_on_err():
-    try:
-        yield
-    except Exception:
-        DB.session.rollback()
-        raise
-    else:
-        DB.session.commit()
-
-
-def check_password(request_data):
-    try:
-        if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
-            raise InvalidRequest('The password provided was incorrect.')
-    except InvalidRequest as e:
-        return {
-            'status': 'error',
-            'message': str(e),
-        }
-
-    return {
-        'status': 'success'
     }
 
 
@@ -229,6 +229,9 @@ def user_create():
         }
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Fact Checking - API Routes and helper functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def batch_claims(claims: list) -> list[list]:
     token_encoder = tiktoken.encoding_for_model(MODEL_NAME)
 
