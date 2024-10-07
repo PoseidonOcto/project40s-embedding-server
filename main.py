@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import tiktoken
 from openai import OpenAI, RateLimitError
 import time
@@ -151,6 +153,17 @@ def insert_media_bias_data_endpoint():
     return insert_media_bias_data()
 
 
+@contextmanager
+def rollback_on_err():
+    try:
+        yield
+    except Exception:
+        DB.session.rollback()
+        raise
+    else:
+        DB.session.commit()
+
+
 def insert_media_bias_data():
     with open(INSERT_MEDIA_BIAS_RAW_DATA) as f:
         data = get_data_by_url(f)
@@ -160,36 +173,37 @@ def insert_media_bias_data():
         for bias_rating in data.values():
             assert bias_rating in valid_bias_ratings
 
-        # Delete all entries in table
-        # PoliticalLeaning.query.delete()
-
-        try:
+        with rollback_on_err():
+            # Delete all entries in table
             DB.session.query(PoliticalLeaning).delete()
+
+            # Add new entries
             for url, bias_rating in data.items():
                 DB.session.add(PoliticalLeaning(url=url, leaning=bias_rating))
-        except Exception:
-            DB.session.rollback()
-            raise
-        else:
-            DB.session.commit()
 
-
-
-        # for bias_rating in data.values():
-        #     entry = PoliticalLeaning(
-        #         url=get_or_throw(request_data, 'url'),
-        #         leaning=get_or_throw_enum(request_data, 'leaning', PoliticalLeaningEnum),
-        #     )
-        #     DB.session.add(entry)
-        #     DB.session.commit()
-
-        # print(set(data.values()))
-        # for x in data.keys():
-        #     if x[0:3] != 'www':
-        #         print(x)
         return {
             'status': 'success',
         }
+
+
+@app.route("/recreate", methods=["POST"])
+def recreate_tables():
+    request_data = request.get_json()
+    try:
+        if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
+            raise InvalidRequest('The password provided was incorrect.')
+    except InvalidRequest as e:
+        return {
+            'status': 'error',
+            'message': str(e),
+        }
+
+    DB.drop_all()
+    DB.create_all()
+
+    return {
+        'status': 'success',
+    }
 
 
 @app.route("/users/create", methods=["POST"])
