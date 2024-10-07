@@ -73,18 +73,19 @@ class PoliticalLeaningEnum(Enum):
     CONSPIRACY = 'CONSPIRACY'
     PRO_SCIENCE = 'PRO_SCIENCE'
     SATIRE = 'SATIRE'
+    UNKNOWN = 'UNKNOWN'
 
 
 class Fact(DB.Model):
     """ Table storing 'fact-checks' the user has triggered when using the extension. """
     __tablename__ = 'fact'
-    # Composite key: 'id of user' and 'id of claim'
+    # Composite key: 'id of user', 'id of claim', 'url', and 'triggering_text'
     user_id = DB.Column(DB.Integer, primary_key=True)
     claim_id = DB.Column(DB.Integer, primary_key=True)
+    url = DB.Column(DB.Text, primary_key=True)
+    triggering_text = DB.Column(DB.Text, primary_key=True)
 
-    url = DB.Column(DB.Text, nullable=False)
-    triggering_text = DB.Column(DB.Text, nullable=False)
-    date_triggered = DB.Column(DB.Integer, nullable=False)
+    latest_date_triggered = DB.Column(DB.Integer, nullable=False)
 
 
 class Interaction(DB.Model):
@@ -236,6 +237,7 @@ def user_create():
 def get_all_data():
     result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
     return [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
