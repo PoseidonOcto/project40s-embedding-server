@@ -8,6 +8,7 @@ from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import and_
 from enum import Enum
 import os
 import requests
@@ -274,8 +275,12 @@ def add_fact():
         )
 
         result = DB.session.execute(DB.select(Fact).where(
-            Fact.user_id == user_id and Fact.claim_id == claim_id and
-            Fact.url == url and Fact.triggering_text == triggering_text
+            and_(
+                Fact.user_id == user_id,
+                Fact.claim_id == claim_id,
+                Fact.url == url,
+                Fact.triggering_text == triggering_text
+            )
         )).one_or_none()
 
         if result is None:
