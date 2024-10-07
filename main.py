@@ -239,6 +239,38 @@ def get_all_data():
     return [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
 
 
+@app.route("/add_fact", methods=["POST"])
+@handle_invalid_request
+def add_fact():
+    request_data = request.get_json()
+    with rollback_on_err():
+        # TODO can we inline?
+        user_id = get_or_throw(request_data, 'user_id')
+        claim_id = get_or_throw(request_data, 'claim_id'),
+        url = get_or_throw(request_data, 'url'),
+        triggering_text = get_or_throw(request_data, 'triggering_text'),
+        latest_date_triggered = get_or_throw(request_data, 'latest_date_triggered')
+
+        new_data = Fact(
+            user_id=user_id,
+            claim_id=claim_id,
+            url=url,
+            triggering_text=triggering_text,
+            latest_date_triggered=latest_date_triggered,
+        )
+
+        result = DB.session.execute(DB.select(Fact).where(
+            Fact.user_id == user_id and Fact.claim_id == claim_id and
+            Fact.url == url and Fact.triggering_text == triggering_text
+        )).one_or_none()
+
+        if result is None:
+            DB.session.add(new_data)
+        else:
+            result.Fact.latest_date_triggered = latest_date_triggered
+
+    return None
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Fact Checking - API Routes and helper functions
