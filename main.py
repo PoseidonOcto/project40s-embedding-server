@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-
 import tiktoken
 from openai import OpenAI, RateLimitError
 import time
@@ -11,6 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from enum import Enum
 import os
+import requests
 
 from media_bias_insert import get_data_by_url
 
@@ -239,13 +239,27 @@ def get_all_data():
     return [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
 
 
+def get_user_id(token: str) -> int:
+    url = 'https://www.googleapis.com/oauth2/v2/userinfo'
+    headers = {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.get(url, headers=headers)
+    if not response.ok:
+        raise InvalidRequest(f'Google OAuth API responded with code "{response.status_code}".')
+
+    return int(response.json()['id'])
+
+
 @app.route("/add_fact", methods=["POST"])
 @handle_invalid_request
 def add_fact():
     request_data = request.get_json()
     with rollback_on_err():
         # TODO can we inline?
-        user_id = get_or_throw(request_data, 'user_id')
+        user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
         claim_id = get_or_throw(request_data, 'claim_id'),
         url = get_or_throw(request_data, 'url'),
         triggering_text = get_or_throw(request_data, 'triggering_text'),
@@ -267,6 +281,7 @@ def add_fact():
         if result is None:
             DB.session.add(new_data)
         else:
+            # Todo check is later date.
             result.Fact.latest_date_triggered = latest_date_triggered
 
     return None
