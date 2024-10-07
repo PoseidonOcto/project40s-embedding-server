@@ -289,13 +289,13 @@ def add_fact():
 # TODO handle (by returning InvalidRequest):
 #   - 'data' is not an interable
 #   - 'claim_id' or 'latest_date_triggered' could not be converted to an int
-@app.route("/add_facts", methods=["POST"])
+@app.route("/facts/add", methods=["POST"])
 @handle_invalid_request
 def add_facts():
     request_data = request.get_json()
     with rollback_on_err():
         user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
-        data = get_user_id(get_or_throw(request_data, 'data'))
+        data = get_or_throw(request_data, 'data')
 
         for entry in data:
             new_data = Fact(
@@ -321,6 +321,25 @@ def add_facts():
                 # Update entry to the one with the latest date.
                 if result.Fact.latest_date_triggered < new_data.latest_date_triggered:
                     result.Fact.latest_date_triggered = new_data.latest_date_triggered
+
+    return None
+
+
+@app.route("/facts/get", methods=["POST"])
+@handle_invalid_request
+def get_facts():
+    request_data = request.get_json()
+    with rollback_on_err():
+        user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+
+        results = DB.session.execute(DB.select(Fact).where(
+            and_(
+                Fact.user_id == user_id,
+            )
+        )).all()
+
+        return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.latest_date_triggered)
+                for row in results]
 
     return None
 
