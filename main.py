@@ -147,7 +147,7 @@ def insert_media_bias_data_endpoint():
             'message': str(e),
         }
 
-    insert_media_bias_data()
+    return insert_media_bias_data()
 
 
 def insert_media_bias_data():
@@ -162,17 +162,15 @@ def insert_media_bias_data():
         # Delete all entries in table
         # PoliticalLeaning.query.delete()
 
-        DB.session.query(PoliticalLeaning).delete()
-        DB.session.commit()
-        # try:
-        #     DB.session.query(PoliticalLeaning).delete()
-        #     for url, bias_rating in data.items():
-        #         DB.session.add(PoliticalLeaning(url=url, bias_rating=bias_rating))
-        # except Exception:
-        #     DB.session.rollback()
-        #     raise
-        # else:
-        #     DB.session.commit()
+        try:
+            DB.session.query(PoliticalLeaning).delete()
+            for url, bias_rating in data.items():
+                DB.session.add(PoliticalLeaning(url=url, bias_rating=bias_rating))
+        except Exception:
+            DB.session.rollback()
+            raise
+        else:
+            DB.session.commit()
 
 
 
