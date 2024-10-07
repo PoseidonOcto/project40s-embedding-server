@@ -242,7 +242,7 @@ def user_create():
 def get_all_data():
     try:
         result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
-        formatted_result = [(row[0].url, row[0].leaning) for row in result]
+        formatted_result = [(row[0].url, row[0].leaning.value) for row in result]
         return {
             'status': 'success',
             'data': formatted_result,
