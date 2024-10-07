@@ -160,7 +160,9 @@ def insert_media_bias_data():
             assert bias_rating in valid_bias_ratings
 
         # Delete all entries in table
-        PoliticalLeaning.query.delete()
+        # PoliticalLeaning.query.delete()
+        DB.session.query(PoliticalLeaning).delete()
+        DB.session.commit()
 
         # for bias_rating in data.values():
         #     entry = PoliticalLeaning(
