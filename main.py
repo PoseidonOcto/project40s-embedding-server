@@ -174,12 +174,12 @@ def rollback_on_err():
 
 
 @app.route("/bias", methods=["POST"])
+@handle_invalid_request
 def insert_media_bias_data():
     request_data = request.get_json()
 
-    response = check_password(request_data)
-    if response['status'] == 'error':
-        return response
+    if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
+        raise InvalidRequest('The password provided was incorrect.')
 
     with open(INSERT_MEDIA_BIAS_RAW_DATA) as f:
         data = get_data_by_url(f)
@@ -197,25 +197,20 @@ def insert_media_bias_data():
             for url, bias_rating in data.items():
                 DB.session.add(PoliticalLeaning(url=url, leaning=bias_rating))
 
-    return {
-        'status': 'success',
-    }
+    return None
 
 
 @app.route("/recreate", methods=["POST"])
+@handle_invalid_request
 def recreate_tables():
     request_data = request.get_json()
-
-    response = check_password(request_data)
-    if response['status'] == 'error':
-        return response
+    if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
+        raise InvalidRequest('The password provided was incorrect.')
 
     DB.drop_all()
     DB.create_all()
 
-    return {
-        'status': 'success',
-    }
+    return None
 
 
 @app.route("/users/create", methods=["POST"])
@@ -239,19 +234,10 @@ def user_create():
 
 
 @app.route("/get_all", methods=["POST"])
+@handle_invalid_request
 def get_all_data():
-    try:
-        result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
-        formatted_result = [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
-        return {
-            'status': 'success',
-            'data': formatted_result,
-        }
-    except InvalidRequest as e:
-        return {
-            'status': 'error',
-            'message': str(e),
-        }
+    result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
+    return [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
