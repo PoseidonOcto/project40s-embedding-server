@@ -139,9 +139,9 @@ def get_or_throw_enum(request_data, key, enum):
 
 
 def handle_invalid_request(func):
-    def wrapper():
+    def wrapper(*args, **kwargs):
         try:
-            data = func()
+            data = func(*args, **kwargs)
         except InvalidRequest as e:
             return {
                 'status': 'error',
