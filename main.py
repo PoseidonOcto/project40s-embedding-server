@@ -241,7 +241,7 @@ def user_create():
 @app.route("/get_all", methods=["POST"])
 def get_all_data():
     try:
-        result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url))
+        result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
         formatted_result = [dict(row.items()) for row in result]
         return {
             'status': 'success',
