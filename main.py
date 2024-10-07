@@ -138,19 +138,28 @@ def get_or_throw_enum(request_data, key, enum):
             f"The request field '{key}' has value '{request_data[key]}' which is not a valid member of {str(enum)}")
 
 
-def check_password(request_data):
-    try:
-        if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
-            raise InvalidRequest('The password provided was incorrect.')
-    except InvalidRequest as e:
+def handle_invalid_request(func):
+    def wrapper():
+        try:
+            data = func()
+        except InvalidRequest as e:
+            return {
+                'status': 'error',
+                'message': str(e),
+            }
+
         return {
-            'status': 'error',
-            'message': str(e),
+            'status': 'success',
+            'data': data
         }
 
-    return {
-        'status': 'success'
-    }
+    return wrapper
+
+
+@handle_invalid_request
+def check_password(request_data):
+    if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
+        raise InvalidRequest('The password provided was incorrect.')
 
 
 @contextmanager
