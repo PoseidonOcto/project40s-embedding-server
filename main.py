@@ -139,32 +139,13 @@ def get_or_throw_enum(request_data, key, enum):
 
 
 @app.route("/bias", methods=["POST"])
-def insert_media_bias_data_endpoint():
-    request_data = request.get_json()
-    try:
-        if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
-            raise InvalidRequest('The password provided was incorrect.')
-    except InvalidRequest as e:
-        return {
-            'status': 'error',
-            'message': str(e),
-        }
-
-    return insert_media_bias_data()
-
-
-@contextmanager
-def rollback_on_err():
-    try:
-        yield
-    except Exception:
-        DB.session.rollback()
-        raise
-    else:
-        DB.session.commit()
-
-
 def insert_media_bias_data():
+    request_data = request.get_json()
+
+    response = check_password(request_data)
+    if response['status'] == 'error':
+        return response
+
     with open(INSERT_MEDIA_BIAS_RAW_DATA) as f:
         data = get_data_by_url(f)
 
@@ -181,14 +162,23 @@ def insert_media_bias_data():
             for url, bias_rating in data.items():
                 DB.session.add(PoliticalLeaning(url=url, leaning=bias_rating))
 
-        return {
-            'status': 'success',
-        }
+    return {
+        'status': 'success',
+    }
 
 
-@app.route("/recreate", methods=["POST"])
-def recreate_tables():
-    request_data = request.get_json()
+@contextmanager
+def rollback_on_err():
+    try:
+        yield
+    except Exception:
+        DB.session.rollback()
+        raise
+    else:
+        DB.session.commit()
+
+
+def check_password(request_data):
     try:
         if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
             raise InvalidRequest('The password provided was incorrect.')
@@ -197,6 +187,19 @@ def recreate_tables():
             'status': 'error',
             'message': str(e),
         }
+
+    return {
+        'status': 'success'
+    }
+
+
+@app.route("/recreate", methods=["POST"])
+def recreate_tables():
+    request_data = request.get_json()
+
+    response = check_password(request_data)
+    if response['status'] == 'error':
+        return response
 
     DB.drop_all()
     DB.create_all()

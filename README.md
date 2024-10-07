@@ -31,4 +31,11 @@ curl -i --request POST "https://project40s-embedding-server-production.up.railwa
 > Make sure the global variable storing the path to the data file is appropriate.
 > Get the password from the environment variable DATABASE_PRIVILEGED_OP_PASSWORD on Railway.
 
+## Recreating tables
+
+If you have updated the schema or simply wish to recreate the database, 
+run the following command (in bash) after updating the password field:
+```
+curl -i --request POST "https://project40s-embedding-server-production.up.railway.app/recreate" -H "Content-Type: application/json" -d '{"password": "GET_FROM_RAILWAY"}'
+```
 
