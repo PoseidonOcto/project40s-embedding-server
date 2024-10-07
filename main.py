@@ -8,6 +8,7 @@ from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from enum import Enum
+import os
 
 from media_bias_insert import get_data_by_url
 
@@ -38,8 +39,8 @@ SEARCH_BATCH_SIZE = 10  # Max batch size for Zilliz api
 DEFAULT_SEARCH_SIMILARITY_THRESHOLD = 0.6
 
 # Postgres database hosted on railway, managed via Flask-SQLAlchemy.
-DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+# DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
 
 # This API endpoint should not be accessible to public.
