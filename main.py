@@ -165,7 +165,7 @@ def insert_media_bias_data():
         try:
             DB.session.query(PoliticalLeaning).delete()
             for url, bias_rating in data.items():
-                DB.session.add(PoliticalLeaning(url=url, bias_rating=bias_rating))
+                DB.session.add(PoliticalLeaning(url=url, leaning=bias_rating))
         except Exception:
             DB.session.rollback()
             raise

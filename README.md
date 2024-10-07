@@ -21,3 +21,12 @@ pip freeze > requirements.txt
 ```
 
 
+## Updating media bias data
+
+To update media bias data, download the new file to the data directory and run the following command (in bash):
+```
+curl -i --request POST "https://project40s-embedding-server-production.up.railway.app/bias" -H "Content-Type: application/json" -d '{"password": "aOf3g44vpogo"}'
+```
+> Make sure the global variable storing the path to the data file is appropriate, and that the password in the above curl request is the password stored in a global variable in `main.py`,
+
+
