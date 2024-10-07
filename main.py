@@ -158,7 +158,6 @@ def handle_invalid_request(func):
     return wrapper
 
 
-@handle_invalid_request
 def check_password(request_data):
     if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
         raise InvalidRequest('The password provided was incorrect.')
@@ -179,9 +178,7 @@ def rollback_on_err():
 @handle_invalid_request
 def insert_media_bias_data():
     request_data = request.get_json()
-
-    if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
-        raise InvalidRequest('The password provided was incorrect.')
+    check_password(request_data)
 
     with open(INSERT_MEDIA_BIAS_RAW_DATA) as f:
         data = get_data_by_url(f)
@@ -206,8 +203,7 @@ def insert_media_bias_data():
 @handle_invalid_request
 def recreate_tables():
     request_data = request.get_json()
-    if get_or_throw(request_data, 'password') != INSERT_MEDIA_BIAS_DATA_PASSWORD:
-        raise InvalidRequest('The password provided was incorrect.')
+    check_password(request_data)
 
     DB.drop_all()
     DB.create_all()
