@@ -14,7 +14,7 @@ RAW_CLAIM_DATA = 'data/media_bias.json'
 EMPTY_SENTINEL = SentinelEmpty()
 
 # Logging
-LOGGING = True
+LOGGING = False
 
 
 def get_name_of_url(url: str) -> str:
