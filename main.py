@@ -7,8 +7,7 @@ from pymilvus import MilvusClient
 from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-from sqlalchemy.orm import DeclarativeBase, aliased, column_property
+from sqlalchemy.orm import DeclarativeBase, aliased
 from sqlalchemy import and_, func
 from enum import Enum
 import os
@@ -391,11 +390,29 @@ def get_all_facts():
             results[claim_id] += [{
                 'text': row[0].triggering_text,
                 'url': row[0].url,
-                'earliest_date': row[0].earliest_date_triggered
+                'earliest_trigger_date': row[0].earliest_date_triggered
             }]
 
-        # JSON objects don't preserve order, so store in zipped array
-        return [{'claim_id': k, 'triggers': v} for k, v in results.items()]
+    # Get other fields of claim results
+    claim_fields = {
+        entry['id']: entry
+        for entry in MilvusClient(uri=URI, token=TOKEN).get(
+            collection_name=COLLECTION_NAME,
+            ids=list(results.keys()),
+            output_fields=['id', 'claim', 'author_name', 'author_url', 'review', 'url'],
+        )
+    }
+
+    # JSON objects don't preserve order, so store in list
+    return [{
+        'id': claim_id,
+        'triggers': triggers,
+        'claim': claim_fields['claim'],
+        'author_name': claim_fields['author_name'],
+        'author_url': claim_fields['author_url'],
+        'review': claim_fields['review'],
+        'url': claim_fields['url'],
+    } for claim_id, triggers in results.items()]
 
 
 # TODO handle (by returning InvalidRequest):
