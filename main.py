@@ -395,7 +395,7 @@ def get_all_facts():
             }]
 
         # JSON objects don't preserve order, so store in zipped array
-        return [[k, v] for k, v in results.items()]
+        return [{'claim_id': k, 'triggers': v} for k, v in results.items()]
 
 
 # TODO handle (by returning InvalidRequest):
