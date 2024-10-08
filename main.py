@@ -7,8 +7,8 @@ from pymilvus import MilvusClient
 from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import and_
+from sqlalchemy.orm import DeclarativeBase, aliased
+from sqlalchemy import and_, func
 from enum import Enum
 import os
 import requests
@@ -86,7 +86,7 @@ class Fact(DB.Model):
     url = DB.Column(DB.Text, primary_key=True)
     triggering_text = DB.Column(DB.Text, primary_key=True)
 
-    latest_date_triggered = DB.Column(DB.BigInteger, nullable=False)
+    earliest_date_triggered = DB.Column(DB.BigInteger, nullable=False)
 
 
 class Interaction(DB.Model):
@@ -254,48 +254,87 @@ def get_user_id(token: str) -> str:
     return response.json()['id']
 
 
+def add_facts(user_id, data) -> int:
+    num_new_facts = 0
+
+    for entry in data:
+        new_data = Fact(
+            user_id=user_id,
+            claim_id=int(get_or_throw(entry, 'claim_id')),
+            url=get_or_throw(entry, 'url'),
+            triggering_text=get_or_throw(entry, 'triggering_text'),
+            earliest_date_triggered=int(get_or_throw(entry, 'earliest_date_triggered')),
+        )
+
+        # Check if fact has been triggered before.
+        is_new_fact = DB.session.execute(DB.select(Fact).where(
+            and_(
+                Fact.user_id == new_data.user_id,
+                Fact.claim_id == new_data.claim_id,
+            )
+        )).first() is None
+        if is_new_fact:
+            num_new_facts += 1
+
+        # Add fact to the database
+        result = DB.session.execute(DB.select(Fact).where(
+            and_(
+                Fact.user_id == new_data.user_id,
+                Fact.claim_id == new_data.claim_id,
+                Fact.url == new_data.url,
+                Fact.triggering_text == new_data.triggering_text
+            )
+        )).one_or_none()
+
+        if result is None:
+            DB.session.add(new_data)
+        else:
+            # Update entry to the one with the earliest date.
+            if new_data.earliest_date_triggered < result.Fact.earliest_date_triggered:
+                result.Fact.earliest_date_triggered = new_data.earliest_date_triggered
+
+    return num_new_facts
+
+
 # TODO handle (by returning InvalidRequest):
 #   - 'data' is not an interable
-#   - 'claim_id' or 'latest_date_triggered' could not be converted to an int
-@app.route("/facts/add", methods=["POST"])
+#   - 'claim_id' or 'earliest_date_triggered' could not be converted to an int
+@app.route("/facts/deprecated_add", methods=["POST"])
 @handle_invalid_request
-def add_facts():
+def add_facts_endpoint():
     request_data = request.get_json()
+    user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+    data = get_or_throw(request_data, 'data')
+
     with rollback_on_err():
-        user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
-        data = get_or_throw(request_data, 'data')
-
-        for entry in data:
-            new_data = Fact(
-                user_id=user_id,
-                claim_id=int(get_or_throw(entry, 'claim_id')),
-                url=get_or_throw(entry, 'url'),
-                triggering_text=get_or_throw(entry, 'triggering_text'),
-                latest_date_triggered=int(get_or_throw(entry, 'latest_date_triggered')),
-            )
-
-            result = DB.session.execute(DB.select(Fact).where(
-                and_(
-                    Fact.user_id == new_data.user_id,
-                    Fact.claim_id == new_data.claim_id,
-                    Fact.url == new_data.url,
-                    Fact.triggering_text == new_data.triggering_text
-                )
-            )).one_or_none()
-
-            if result is None:
-                DB.session.add(new_data)
-            else:
-                # Update entry to the one with the latest date.
-                if result.Fact.latest_date_triggered < new_data.latest_date_triggered:
-                    result.Fact.latest_date_triggered = new_data.latest_date_triggered
+        add_facts(user_id, data)
 
     return None
 
 
-@app.route("/facts/get", methods=["POST"])
+@app.route("/facts/add", methods=["POST"])
 @handle_invalid_request
-def get_facts():
+def find_facts():
+    request_data = request.get_json()
+    user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+    search_results = search(get_or_throw(request_data, 'data'),
+                            get_or_throw(request_data, 'similarity_threshold'))['data']
+
+    data = []
+    for claim_with_results in search_results:
+        for result in claim_with_results['responses']:
+            data.append({
+                'claim_id': result['id'],
+                'url': result['url'],
+                'triggering_text': claim_with_results['claim'],
+                'earliest_date_triggered': round(time.time() * 1000),
+            })
+    return add_facts(user_id, data)
+
+
+@app.route("/facts/get_all", methods=["POST"])
+@handle_invalid_request
+def get_all_facts_deprecated():
     request_data = request.get_json()
     with rollback_on_err():
         user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
@@ -306,7 +345,33 @@ def get_facts():
             )
         )).all()
 
-        return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.latest_date_triggered)
+        return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.earliest_date_triggered)
+                for row in results]
+
+
+@app.route("/facts/get", methods=["POST"])
+@handle_invalid_request
+def get_all_facts():
+    request_data = request.get_json()
+    # user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+
+    with rollback_on_err():
+        fact_alias_1 = aliased(Fact)
+        fact_alias_2 = aliased(Fact)
+
+        results = DB.session.execute(
+            DB.select(
+                fact_alias_1,
+                DB.select(func.min(fact_alias_2.earliest_date_triggered)).where(
+                    and_(
+                        fact_alias_1.user_id == fact_alias_2.user_id,
+                        fact_alias_1.claim_id == fact_alias_2.claim_id,
+                        )
+                )
+            )
+        ).all()
+
+        return [(row[0].claim_id, row[0].url, row[0].triggering_text, row[0].earliest_date_triggered, row[1])
                 for row in results]
 
 
@@ -406,7 +471,7 @@ def search_batch(client, embedded_claims: list, similarity_threshold: float):
         collection_name=COLLECTION_NAME,
         data=embedded_claims,
         limit=3,
-        output_fields=['claim', 'author_name', 'author_url', 'review', 'url'],
+        output_fields=['id', 'claim', 'author_name', 'author_url', 'review', 'url'],
         search_params={
             "metric_type": "COSINE",
             "params": {"radius": similarity_threshold}
