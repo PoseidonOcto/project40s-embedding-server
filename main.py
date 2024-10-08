@@ -374,15 +374,24 @@ def get_all_facts():
         ).label('earliest')
 
         # Return results, with the most recently seen facts first.
-        results = DB.session.execute(
+        rows = DB.session.execute(
             DB.select(fact_alias_1, subq)
             .order_by(fact_alias_1.earliest_date_triggered.desc())
             .order_by(subq.desc())
         ).all()
 
-        return [(row[0].user_id, row[0].claim_id, row[0].url, row[0].triggering_text, row[0].earliest_date_triggered,
-                 row[1])
-                for row in results]
+        # Index results by claim id. Facts most recently detected will be inserted first.
+        results = {}
+        for row in rows:
+            claim_id = row[0].claim_id
+            if claim_id not in results:
+                results[claim_id] = []
+            results[claim_id] += [{
+                'text': row[0].triggering_text,
+                'url': row[0].url,
+                'earliest_date': row[0].earliest_date_triggered
+            }]
+        return results
 
 
 # TODO handle (by returning InvalidRequest):
