@@ -366,6 +366,7 @@ def get_all_facts():
         fact_alias_1 = aliased(Fact)
         fact_alias_2 = aliased(Fact)
 
+        # Get a column representing the first time the fact was seen by the user.
         subq = DB.select(func.min(fact_alias_2.earliest_date_triggered)).where(
             and_(
                 fact_alias_1.user_id == fact_alias_2.user_id,
@@ -373,8 +374,13 @@ def get_all_facts():
             )
         ).label('earliest')
 
+        # Return results, with the most recently seen facts first.
         results = DB.session.execute(
-            DB.select(fact_alias_1, subq).order_by(fact_alias_1.earliest_date_triggered.desc()).order_by(subq.desc())
+            DB.select(fact_alias_1, subq)
+            .order_by(fact_alias_1.earliest_date_triggered.desc())
+            .order_by(fact_alias_1.claim_id)
+            .order_by(fact_alias_1.user_id)
+            .order_by(subq.desc())
         ).all()
         # fact_alias_1 = aliased(Fact)
         # fact_alias_2 = aliased(Fact)
