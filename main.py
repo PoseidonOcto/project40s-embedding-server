@@ -93,11 +93,11 @@ class Interaction(DB.Model):
     """ Table storing user's media consumption. """
     __tablename__ = 'interaction'
     # Composite key: 'id of user' and 'url'
-    user_id = DB.Column(DB.Integer, primary_key=True)
+    user_id = DB.Column(DB.Text, primary_key=True)
     url = DB.Column(DB.String(255), primary_key=True)
 
     duration_spent = DB.Column(DB.Integer, nullable=False)
-    date_spent = DB.Column(DB.Integer, nullable=False)
+    date_spent = DB.Column(DB.BigInteger, nullable=False)
     clicks = DB.Column(DB.Integer, nullable=False)
 
 
@@ -308,6 +308,25 @@ def get_facts():
 
         return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.latest_date_triggered)
                 for row in results]
+
+
+# TODO handle (by returning InvalidRequest):
+#   -  fields could not be converted to an int
+@app.route("/user_interaction/add", methods=["POST"])
+@handle_invalid_request
+def add_user_interaction_data():
+    request_data = request.get_json()
+
+    new_data = Interaction(
+        user_id=get_user_id(get_or_throw(request_data, 'oauth_token')),
+        url=get_or_throw(request_data, 'url'),
+        duration_spent=int(get_or_throw(request_data, 'duration_spent')),
+        date_spent=int(get_or_throw(request_data, 'date_spent')),
+        clicks=int(get_or_throw(request_data, 'clicks')),
+    )
+
+    with rollback_on_err():
+        DB.session.add(new_data)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
