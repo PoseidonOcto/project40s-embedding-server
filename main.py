@@ -7,8 +7,9 @@ from pymilvus import MilvusClient
 from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.orm import DeclarativeBase, aliased, column_property
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func
 from enum import Enum
 import os
 import requests
@@ -88,9 +89,9 @@ class Fact(DB.Model):
 
     earliest_date_triggered = DB.Column(DB.BigInteger, nullable=False)
 
-    earliest_of_claim_id = column_property(
-        select(func.min(earliest_date_triggered)).group_by(user_id, claim_id).scalar_subquery()
-    )
+    # earliest_of_claim_id = column_property(
+    #     select(func.min(earliest_date_triggered)).where(user_id, claim_id).scalar_subquery()
+    # )
 
 
 class Interaction(DB.Model):
@@ -361,7 +362,20 @@ def get_all_facts():
     # user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
 
     with rollback_on_err():
-        results = DB.session.execute(DB.select(Fact)).all()
+
+        fact_alias_1 = aliased(Fact)
+        fact_alias_2 = aliased(Fact)
+
+        subq = DB.select(func.min(fact_alias_2.earliest_date_triggered)).where(
+            and_(
+                fact_alias_1.user_id == fact_alias_2.user_id,
+                fact_alias_1.claim_id == fact_alias_2.claim_id,
+            )
+        ).label('earliest')
+
+        results = DB.session.execute(
+            DB.select(fact_alias_1, subq)
+        ).all()
         # fact_alias_1 = aliased(Fact)
         # fact_alias_2 = aliased(Fact)
         #
@@ -377,7 +391,8 @@ def get_all_facts():
         #     )
         # ).all()
 
-        return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.earliest_date_triggered, row.Fact.earliest_of_claim_id)
+        return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.earliest_date_triggered,
+                 row.Fact.earliest_of_claim_id)
                 for row in results]
 
 
@@ -419,7 +434,6 @@ def batch_claims(claims: list) -> list[list]:
         else:
             # If batch is empty, one claim is likely too big, and this will loop forever.
             assert batch != [] and tokens_for_claim < MAX_TOKENS
-            print(tokens_in_batch)
 
             batches.append(batch)
             batch = []
