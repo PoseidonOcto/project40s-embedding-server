@@ -407,11 +407,11 @@ def get_all_facts():
     return [{
         'id': claim_id,
         'triggers': triggers,
-        'claim': claim_fields['claim'],
-        'author_name': claim_fields['author_name'],
-        'author_url': claim_fields['author_url'],
-        'review': claim_fields['review'],
-        'url': claim_fields['url'],
+        'claim': claim_fields[claim_id]['claim'],
+        'author_name': claim_fields[claim_id]['author_name'],
+        'author_url': claim_fields[claim_id]['author_url'],
+        'review': claim_fields[claim_id]['review'],
+        'url': claim_fields[claim_id]['url'],
     } for claim_id, triggers in results.items()]
 
 
