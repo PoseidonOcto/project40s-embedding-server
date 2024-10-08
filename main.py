@@ -7,8 +7,8 @@ from pymilvus import MilvusClient
 from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase, aliased
-from sqlalchemy import and_, func
+from sqlalchemy.orm import DeclarativeBase, aliased, column_property
+from sqlalchemy import and_, func, select
 from enum import Enum
 import os
 import requests
@@ -87,6 +87,10 @@ class Fact(DB.Model):
     triggering_text = DB.Column(DB.Text, primary_key=True)
 
     earliest_date_triggered = DB.Column(DB.BigInteger, nullable=False)
+
+    earliest_of_claim_id = column_property(
+        select(func.min(earliest_date_triggered)).group_by(user_id, claim_id).scalar_subquery()
+    )
 
 
 class Interaction(DB.Model):
@@ -357,22 +361,23 @@ def get_all_facts():
     # user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
 
     with rollback_on_err():
-        fact_alias_1 = aliased(Fact)
-        fact_alias_2 = aliased(Fact)
+        results = DB.session.execute(DB.select(Fact)).all()
+        # fact_alias_1 = aliased(Fact)
+        # fact_alias_2 = aliased(Fact)
+        #
+        # results = DB.session.execute(
+        #     DB.select(
+        #         fact_alias_1,
+        #         DB.select(func.min(fact_alias_2.earliest_date_triggered)).where(
+        #             and_(
+        #                 fact_alias_1.user_id == fact_alias_2.user_id,
+        #                 fact_alias_1.claim_id == fact_alias_2.claim_id,
+        #                 )
+        #         )
+        #     )
+        # ).all()
 
-        results = DB.session.execute(
-            DB.select(
-                fact_alias_1,
-                DB.select(func.min(fact_alias_2.earliest_date_triggered)).where(
-                    and_(
-                        fact_alias_1.user_id == fact_alias_2.user_id,
-                        fact_alias_1.claim_id == fact_alias_2.claim_id,
-                        )
-                )
-            )
-        ).all()
-
-        return [(row[0].claim_id, row[0].url, row[0].triggering_text, row[0].earliest_date_triggered, row[1])
+        return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.earliest_date_triggered, row.Fact.earliest_of_claim_id)
                 for row in results]
 
 
