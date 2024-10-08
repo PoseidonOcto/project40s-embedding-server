@@ -374,7 +374,7 @@ def get_all_facts():
         ).label('earliest')
 
         results = DB.session.execute(
-            DB.select(fact_alias_1, subq)
+            DB.select(fact_alias_1, subq).order_by(fact_alias_1.earliest_date_triggered.desc()).order_by(subq.desc())
         ).all()
         # fact_alias_1 = aliased(Fact)
         # fact_alias_2 = aliased(Fact)
@@ -391,7 +391,7 @@ def get_all_facts():
         #     )
         # ).all()
 
-        return [(row[0].claim_id, row[0].url, row[0].triggering_text, row[0].earliest_date_triggered, row[1])
+        return [(row[0].user_id, row[0].claim_id, row[0].url, row[0].triggering_text, row[0].earliest_date_triggered, row[1])
                 for row in results]
 
 
