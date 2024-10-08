@@ -317,6 +317,7 @@ def add_facts_endpoint():
 def find_facts():
     request_data = request.get_json()
     user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+    url_of_trigger = get_or_throw(request_data, 'url_of_trigger')
     search_results = search(get_or_throw(request_data, 'data'),
                             get_or_throw(request_data, 'similarity_threshold'))['data']
 
@@ -325,7 +326,7 @@ def find_facts():
         for result in claim_with_results['responses']:
             data.append({
                 'claim_id': result['id'],
-                'url': result['url'],
+                'url': url_of_trigger,
                 'triggering_text': claim_with_results['claim'],
                 'earliest_date_triggered': round(time.time() * 1000),
             })
