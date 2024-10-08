@@ -359,14 +359,15 @@ def get_all_facts_deprecated():
 @handle_invalid_request
 def get_all_facts():
     request_data = request.get_json()
-    # user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+    user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+    after_date = int(request_data.get('after_date', 0))
 
     with rollback_on_err():
         fact_alias_1 = aliased(Fact)
         fact_alias_2 = aliased(Fact)
 
         # Get a column representing the first time the fact was seen by the user.
-        subq = DB.select(func.min(fact_alias_2.earliest_date_triggered)).where(
+        first_time_seen = DB.select(func.min(fact_alias_2.earliest_date_triggered)).where(
             and_(
                 fact_alias_1.user_id == fact_alias_2.user_id,
                 fact_alias_1.claim_id == fact_alias_2.claim_id,
@@ -375,9 +376,10 @@ def get_all_facts():
 
         # Return results, with the most recently seen facts first.
         rows = DB.session.execute(
-            DB.select(fact_alias_1, subq)
+            DB.select(fact_alias_1, first_time_seen)
+            .where(and_(fact_alias_1.user_id == user_id, first_time_seen >= after_date))
             .order_by(fact_alias_1.earliest_date_triggered.desc())
-            .order_by(subq.desc())
+            .order_by(first_time_seen.desc())
         ).all()
 
         # Index results by claim id. Facts most recently detected will be inserted first.
