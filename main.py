@@ -362,7 +362,6 @@ def get_all_facts():
     # user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
 
     with rollback_on_err():
-
         fact_alias_1 = aliased(Fact)
         fact_alias_2 = aliased(Fact)
 
@@ -378,26 +377,11 @@ def get_all_facts():
         results = DB.session.execute(
             DB.select(fact_alias_1, subq)
             .order_by(fact_alias_1.earliest_date_triggered.desc())
-            .order_by(fact_alias_1.claim_id)
-            .order_by(fact_alias_1.user_id)
             .order_by(subq.desc())
         ).all()
-        # fact_alias_1 = aliased(Fact)
-        # fact_alias_2 = aliased(Fact)
-        #
-        # results = DB.session.execute(
-        #     DB.select(
-        #         fact_alias_1,
-        #         DB.select(func.min(fact_alias_2.earliest_date_triggered)).where(
-        #             and_(
-        #                 fact_alias_1.user_id == fact_alias_2.user_id,
-        #                 fact_alias_1.claim_id == fact_alias_2.claim_id,
-        #                 )
-        #         )
-        #     )
-        # ).all()
 
-        return [(row[0].user_id, row[0].claim_id, row[0].url, row[0].triggering_text, row[0].earliest_date_triggered, row[1])
+        return [(row[0].user_id, row[0].claim_id, row[0].url, row[0].triggering_text, row[0].earliest_date_triggered,
+                 row[1])
                 for row in results]
 
 
