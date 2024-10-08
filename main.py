@@ -391,8 +391,7 @@ def get_all_facts():
         #     )
         # ).all()
 
-        return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.earliest_date_triggered,
-                 row.Fact.earliest_of_claim_id)
+        return [(row[0].claim_id, row[0].url, row[0].triggering_text, row[0].earliest_date_triggered, row[1])
                 for row in results]
 
 
