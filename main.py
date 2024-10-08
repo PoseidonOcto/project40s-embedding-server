@@ -257,41 +257,42 @@ def get_user_id(token: str) -> str:
 def add_facts(user_id, data) -> int:
     num_new_facts = 0
 
-    for entry in data:
-        new_data = Fact(
-            user_id=user_id,
-            claim_id=int(get_or_throw(entry, 'claim_id')),
-            url=get_or_throw(entry, 'url'),
-            triggering_text=get_or_throw(entry, 'triggering_text'),
-            earliest_date_triggered=int(get_or_throw(entry, 'earliest_date_triggered')),
-        )
-
-        # Check if fact has been triggered before.
-        is_new_fact = DB.session.execute(DB.select(Fact).where(
-            and_(
-                Fact.user_id == new_data.user_id,
-                Fact.claim_id == new_data.claim_id,
+    with rollback_on_err():
+        for entry in data:
+            new_data = Fact(
+                user_id=user_id,
+                claim_id=int(get_or_throw(entry, 'claim_id')),
+                url=get_or_throw(entry, 'url'),
+                triggering_text=get_or_throw(entry, 'triggering_text'),
+                earliest_date_triggered=int(get_or_throw(entry, 'earliest_date_triggered')),
             )
-        )).first() is None
-        if is_new_fact:
-            num_new_facts += 1
 
-        # Add fact to the database
-        result = DB.session.execute(DB.select(Fact).where(
-            and_(
-                Fact.user_id == new_data.user_id,
-                Fact.claim_id == new_data.claim_id,
-                Fact.url == new_data.url,
-                Fact.triggering_text == new_data.triggering_text
-            )
-        )).one_or_none()
+            # Check if fact has been triggered before.
+            is_new_fact = DB.session.execute(DB.select(Fact).where(
+                and_(
+                    Fact.user_id == new_data.user_id,
+                    Fact.claim_id == new_data.claim_id,
+                )
+            )).first() is None
+            if is_new_fact:
+                num_new_facts += 1
 
-        if result is None:
-            DB.session.add(new_data)
-        else:
-            # Update entry to the one with the earliest date.
-            if new_data.earliest_date_triggered < result.Fact.earliest_date_triggered:
-                result.Fact.earliest_date_triggered = new_data.earliest_date_triggered
+            # Add fact to the database
+            result = DB.session.execute(DB.select(Fact).where(
+                and_(
+                    Fact.user_id == new_data.user_id,
+                    Fact.claim_id == new_data.claim_id,
+                    Fact.url == new_data.url,
+                    Fact.triggering_text == new_data.triggering_text
+                )
+            )).one_or_none()
+
+            if result is None:
+                DB.session.add(new_data)
+            else:
+                # Update entry to the one with the earliest date.
+                if new_data.earliest_date_triggered < result.Fact.earliest_date_triggered:
+                    result.Fact.earliest_date_triggered = new_data.earliest_date_triggered
 
     return num_new_facts
 
@@ -306,8 +307,7 @@ def add_facts_endpoint():
     user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
     data = get_or_throw(request_data, 'data')
 
-    with rollback_on_err():
-        add_facts(user_id, data)
+    add_facts(user_id, data)
 
     return None
 
