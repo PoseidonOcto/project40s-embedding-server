@@ -391,7 +391,9 @@ def get_all_facts():
                 'url': row[0].url,
                 'earliest_date': row[0].earliest_date_triggered
             }]
-        return results
+
+        # JSON objects don't preserve order, so store in zipped array
+        return [[k, v] for k, v in results.items()]
 
 
 # TODO handle (by returning InvalidRequest):
