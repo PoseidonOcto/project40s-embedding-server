@@ -99,9 +99,9 @@ class Interaction(DB.Model):
     # Composite key: 'id of user' and 'url'
     user_id = DB.Column(DB.Text, primary_key=True)
     url = DB.Column(DB.String(255), primary_key=True)
+    date_spent = DB.Column(DB.BigInteger, primary_key=True)
 
     duration_spent = DB.Column(DB.Integer, nullable=False)
-    date_spent = DB.Column(DB.BigInteger, nullable=False)
     clicks = DB.Column(DB.Integer, nullable=False)
 
 
