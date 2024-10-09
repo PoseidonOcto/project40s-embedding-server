@@ -120,9 +120,9 @@ with app.app_context():
     DB.create_all()
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Database - API Routes and helper functions
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class InvalidRequest(Exception):
     pass
 
@@ -434,9 +434,9 @@ def add_user_interaction_data():
         DB.session.add(new_data)
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Fact Checking - API Routes and helper functions
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def batch_claims(claims: list) -> list[list]:
     token_encoder = tiktoken.encoding_for_model(MODEL_NAME)
 
