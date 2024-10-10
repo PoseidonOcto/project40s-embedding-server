@@ -434,6 +434,30 @@ def add_user_interaction_data():
         DB.session.add(new_data)
 
 
+# TODO handle (by returning InvalidRequest):
+#   -  fields could not be converted to an int
+@app.route("/user_interaction/get", methods=["POST"])
+@handle_invalid_request
+def get_user_interaction_data():
+    request_data = request.get_json()
+    user_id = get_user_id(get_or_throw(request_data, 'oauth_token')),
+
+    with rollback_on_err():
+        rows = DB.session.execute(
+            DB.select(Interaction)
+            .where(and_(Interaction.user_id == user_id))
+        ).all()
+
+        results = [{
+            'url': row[0].url,
+            'date': row[0].date_spent,
+            'duration': row[0].duration_spent,
+            'clicks': row[0].clicks,
+        } for row in rows]
+
+    return results
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Fact Checking - API Routes and helper functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
