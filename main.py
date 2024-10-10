@@ -23,15 +23,15 @@ Private API keys could instead be stored in environment variables on Railway if 
 app = Flask(__name__)
 
 # Zilliz Cloud cluster vector database
-URI = 'https://in03-4bf6e70f6c36dab.serverless.gcp-us-west1.cloud.zilliz.com'
-TOKEN = 'c8276ba3c7f4f1921f386b8d99fcf34f268fe89d00c320a5d679e4b943e09e01c6da86463a2ae370e07e208a297de1d585ae2aac'
+URI = os.environ['ZILLIZ_URI']
+TOKEN = os.environ['ZILLIZ_TOKEN']
 # Set up the name of the collection to be created.
 COLLECTION_NAME = 'claims'
 # Set up the dimension of the embeddings.
 DIMENSION = 1536
 
 # OpenAI embedding API
-OPENAI_API_KEY = 'sk-svcacct-JHSMzMYNZRVwWuQk3kJ3d0K0F3EuJZP7XbCoI9lB6A6Q6zxbzL4F7PSjumV923F1uMqitGWgjuFV-sDsT3BlbkFJ2YGDJYbL73J-FXGLAZf_DgLACHHlJgH8OiWDTOnXPKyIjtCGUdPALJ3e4g5iIigyHoceAjm_yVgKGbcA'
+OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY)
 MODEL_NAME = "text-embedding-3-small"
 # Max tokens for text-embedding-3-small
