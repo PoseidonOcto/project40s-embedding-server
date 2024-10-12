@@ -17,13 +17,20 @@ EMPTY_SENTINEL = SentinelEmpty()
 LOGGING = False
 
 
-def get_name_of_url(url: str) -> str:
-    # Note we observed no urls starting with "http"
-    assert url[0:4] != "http"
+def strip_off_start(text: str, text_to_strip: str) -> str:
+    if text.startswith(text_to_strip):
+        return text[len(text_to_strip):]
+    return text
 
-    # Strip leading 'www.'
-    if url[0:4] == "www.":
-        url = url[4:]
+
+def get_name_of_url(url: str) -> str:
+    # This would be stripped, but probably indicates an error.
+    assert not url.startswith("http://https://")
+
+    # noinspection HttpUrlsUsage
+    url = strip_off_start(url, "http://")
+    url = strip_off_start(url, "https://")
+    url = strip_off_start(url, "www.")
 
     # Only want domain info
     url = url.split('/')[0]
@@ -64,7 +71,6 @@ def index_data_by_url(file):
         print(f"Removed {len(data_to_remove)}")
 
     return data_by_url
-
 
 
 def main():
