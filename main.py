@@ -13,7 +13,7 @@ from enum import Enum
 import os
 import requests
 
-from media_bias_insert import index_data_by_url, get_name_of_url
+from media_bias_insert import index_data_by_url, get_domain_of_url
 
 """
 API Server handling data storage and 'similar claim detection' for project40s.
@@ -464,7 +464,7 @@ def get_media_bias_data():
     request_data = request.get_json()
 
     with rollback_on_err():
-        url = get_name_of_url(get_or_throw(request_data, 'url'))
+        url = get_domain_of_url(get_or_throw(request_data, 'url'))
 
         row = DB.session.execute(
             DB.select(PoliticalLeaning)

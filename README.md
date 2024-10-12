@@ -17,7 +17,7 @@ python main.py
 To update the dependencies, run the following command in the root directory of the project:
 
 ```
-pip freeze > requirements.txt
+pip3 freeze > requirements.txt
 ```
 
 

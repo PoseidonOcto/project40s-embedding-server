@@ -1,4 +1,5 @@
 import json
+import tldextract
 
 
 class SentinelEmpty:
@@ -23,25 +24,8 @@ def strip_off_start(text: str, text_to_strip: str) -> str:
     return text
 
 
-def get_name_of_url(url: str) -> str:
-    # This would be stripped, but probably indicates an error.
-    assert not url.startswith("http://https://")
-
-    # noinspection HttpUrlsUsage
-    url = strip_off_start(url, "http://")
-    url = strip_off_start(url, "https://")
-    url = strip_off_start(url, "www.")
-
-    # Only want domain info
-    url = url.split('/')[0]
-    assert len(url) != 0
-
-    # Discard domain extension (i.e. '.com')
-    if "." in url:
-        url = ''.join(url.split(".")[0:-1])
-
-    return url
-
+def get_domain_of_url(url: str) -> str:
+    return tldextract.extract(url).domain
 
 def index_data_by_url(file):
     data: list = json.load(file)
@@ -51,7 +35,7 @@ def index_data_by_url(file):
         if entry['url'] == 'no url available' or entry['bias'] == 'No media bias rating':
             continue
 
-        url = get_name_of_url(entry['url'])
+        url = get_domain_of_url(entry['url'])
         bias = entry['bias'].replace("-", "_").upper()
 
         existing_entry_bias = data_by_url.get(url, EMPTY_SENTINEL)
