@@ -36,7 +36,7 @@ def get_name_of_url(url: str) -> str:
     return url
 
 
-def get_data_by_url(file):
+def index_data_by_url(file):
     data: list = json.load(file)
     data_by_url: dict = {}
     data_to_remove: set = set()

@@ -13,7 +13,7 @@ from enum import Enum
 import os
 import requests
 
-from media_bias_insert import get_data_by_url
+from media_bias_insert import index_data_by_url, get_name_of_url
 
 """
 API Server handling data storage and 'similar claim detection' for project40s.
@@ -180,31 +180,6 @@ def rollback_on_err():
         DB.session.commit()
 
 
-@app.route("/bias", methods=["POST"])
-@handle_invalid_request
-def insert_media_bias_data():
-    request_data = request.get_json()
-    check_password(request_data)
-
-    with open(INSERT_MEDIA_BIAS_RAW_DATA) as f:
-        data = get_data_by_url(f)
-
-        # Verify all bias ratings have been captured in schema
-        valid_bias_ratings = set([x.value for x in PoliticalLeaningEnum])
-        for bias_rating in data.values():
-            assert bias_rating in valid_bias_ratings
-
-        with rollback_on_err():
-            # Delete all entries in table
-            DB.session.query(PoliticalLeaning).delete()
-
-            # Add new entries
-            for url, bias_rating in data.items():
-                DB.session.add(PoliticalLeaning(url=url, leaning=bias_rating))
-
-    return None
-
-
 @app.route("/recreate", methods=["POST"])
 @handle_invalid_request
 def recreate_tables():
@@ -217,31 +192,31 @@ def recreate_tables():
     return None
 
 
-@app.route("/users/create", methods=["POST"])
-def user_create():
-    request_data = request.get_json()
-    try:
-        entry = PoliticalLeaning(
-            url=get_or_throw(request_data, 'url'),
-            leaning=get_or_throw_enum(request_data, 'leaning', PoliticalLeaningEnum),
-        )
-        DB.session.add(entry)
-        DB.session.commit()
-        return {
-            'status': 'success',
-        }
-    except InvalidRequest as e:
-        return {
-            'status': 'error',
-            'message': str(e),
-        }
-
-
-@app.route("/get_all", methods=["POST"])
-@handle_invalid_request
-def get_all_data():
-    result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
-    return [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
+# @app.route("/users/create", methods=["POST"])
+# def user_create():
+#     request_data = request.get_json()
+#     try:
+#         entry = PoliticalLeaning(
+#             url=get_or_throw(request_data, 'url'),
+#             leaning=get_or_throw_enum(request_data, 'leaning', PoliticalLeaningEnum),
+#         )
+#         DB.session.add(entry)
+#         DB.session.commit()
+#         return {
+#             'status': 'success',
+#         }
+#     except InvalidRequest as e:
+#         return {
+#             'status': 'error',
+#             'message': str(e),
+#         }
+#
+#
+# @app.route("/get_all", methods=["POST"])
+# @handle_invalid_request
+# def get_all_data():
+#     result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
+#     return [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
 
 
 def get_user_id(token: str) -> str:
@@ -301,24 +276,24 @@ def add_facts(user_id, data) -> int:
     return num_new_facts
 
 
-# TODO handle (by returning InvalidRequest):
-#   - 'data' is not an interable
-#   - 'claim_id' or 'earliest_date_triggered' could not be converted to an int
-@app.route("/facts/deprecated_add", methods=["POST"])
-@handle_invalid_request
-def add_facts_endpoint():
-    request_data = request.get_json()
-    user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
-    data = get_or_throw(request_data, 'data')
-
-    add_facts(user_id, data)
-
-    return None
+# # TODO handle (by returning InvalidRequest):
+# #   - 'data' is not an interable
+# #   - 'claim_id' or 'earliest_date_triggered' could not be converted to an int
+# @app.route("/facts/deprecated_add", methods=["POST"])
+# @handle_invalid_request
+# def add_facts_endpoint():
+#     request_data = request.get_json()
+#     user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+#     data = get_or_throw(request_data, 'data')
+#
+#     add_facts(user_id, data)
+#
+#     return None
 
 
 @app.route("/facts/add", methods=["POST"])
 @handle_invalid_request
-def find_facts():
+def add_facts_endpoint():
     request_data = request.get_json()
     user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
     url_of_trigger = get_or_throw(request_data, 'url_of_trigger')
@@ -337,21 +312,21 @@ def find_facts():
     return add_facts(user_id, data)
 
 
-@app.route("/facts/get_all", methods=["POST"])
-@handle_invalid_request
-def get_all_facts_deprecated():
-    request_data = request.get_json()
-    with rollback_on_err():
-        user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
-
-        results = DB.session.execute(DB.select(Fact).where(
-            and_(
-                Fact.user_id == user_id,
-            )
-        )).all()
-
-        return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.earliest_date_triggered)
-                for row in results]
+# @app.route("/facts/get_all", methods=["POST"])
+# @handle_invalid_request
+# def get_all_facts_deprecated():
+#     request_data = request.get_json()
+#     with rollback_on_err():
+#         user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
+#
+#         results = DB.session.execute(DB.select(Fact).where(
+#             and_(
+#                 Fact.user_id == user_id,
+#             )
+#         )).all()
+#
+#         return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.earliest_date_triggered)
+#                 for row in results]
 
 
 @app.route("/facts/get", methods=["POST"])
@@ -458,6 +433,70 @@ def get_user_interaction_data():
     return results
 
 
+@app.route("/bias/get_all", methods=["POST"])
+@handle_invalid_request
+def insert_media_bias_data():
+    request_data = request.get_json()
+    check_password(request_data)
+
+    with open(INSERT_MEDIA_BIAS_RAW_DATA) as f:
+        data = index_data_by_url(f)
+
+        # Verify all bias ratings have been captured in schema
+        valid_bias_ratings = set([x.value for x in PoliticalLeaningEnum])
+        for bias_rating in data.values():
+            assert bias_rating in valid_bias_ratings
+
+        with rollback_on_err():
+            # Delete all entries in table
+            DB.session.query(PoliticalLeaning).delete()
+
+            # Add new entries
+            for url, bias_rating in data.items():
+                DB.session.add(PoliticalLeaning(url=url, leaning=bias_rating))
+
+    return None
+
+
+@app.route("/bias/get", methods=["POST"])
+@handle_invalid_request
+def get_media_bias_data():
+    request_data = request.get_json()
+
+    with rollback_on_err():
+        url = get_name_of_url(get_or_throw(request_data, 'url'))
+
+        row = DB.session.execute(
+            DB.select(PoliticalLeaning)
+            .where(and_(PoliticalLeaning.url == url))
+        ).one()
+
+    return row[0].leaning
+
+
+@app.route("/delete", methods=["POST"])
+@handle_invalid_request
+def delete_users_data():
+    request_data = request.get_json()
+    user_id = get_user_id(get_or_throw(request_data, 'oauth_token')),
+
+    with rollback_on_err():
+        interaction = DB.session.execute(
+            DB.select(Interaction)
+            .where(and_(Interaction.user_id == user_id))
+        ).all()
+
+        fact = DB.session.execute(
+            DB.select(Fact)
+            .where(and_(Fact.user_id == user_id))
+        ).all()
+
+        DB.session.delete(interaction)
+        DB.session.delete(fact)
+
+    return None
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Fact Checking - API Routes and helper functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -562,7 +601,7 @@ def search(claims: list, similarity_threshold: float):
     # Make the Pool of workers
     pool = ThreadPool(len(batches))
 
-    # Encode on seperate threads and return the results
+    # Encode on separate threads and return the results
     results_by_thread = pool.map(lambda batch: search_batch(client, batch, similarity_threshold), batches)
 
     # Close the pool and wait for the work to finish
