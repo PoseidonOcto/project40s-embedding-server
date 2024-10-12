@@ -469,9 +469,12 @@ def get_media_bias_data():
         row = DB.session.execute(
             DB.select(PoliticalLeaning)
             .where(and_(PoliticalLeaning.url == url))
-        ).one()
+        ).one_or_none()
 
-    return row[0].leaning
+    if row is None:
+        return None
+
+    return row[0].leaning.value
 
 
 @app.route("/delete", methods=["POST"])
