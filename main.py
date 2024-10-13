@@ -359,17 +359,19 @@ def get_user_interaction_data():
     user_id = get_user_id(get_or_throw(request_data, 'oauth_token')),
 
     with rollback_on_err():
-        rows = DB.session.execute(
-            DB.select(Interaction)
+        interactions = DB.session.execute(
+            DB.select(Interaction, PoliticalLeaning)
+            .join_from(Interaction, PoliticalLeaning, Interaction.url == PoliticalLeaning.url, isouter=True)
             .where(and_(Interaction.user_id == user_id))
         ).all()
 
-        results = [{
-            'url': row[0].url,
-            'date': row[0].date_spent,
-            'duration': row[0].duration_spent,
-            'clicks': row[0].clicks,
-        } for row in rows]
+    results = [{
+        'url': row[0].url,
+        'date': row[0].date_spent,
+        'duration': row[0].duration_spent,
+        'clicks': row[0].clicks,
+        'leaning': row[1].leaning.value if row[1].leaning is not None else None,
+    } for row in interactions]
 
     return results
 
@@ -408,7 +410,6 @@ def get_media_bias_data():
     urls = get_or_throw(request_data, 'urls')
 
     with rollback_on_err():
-
         rows = DB.session.execute(
             DB.select(PoliticalLeaning)
             .where(PoliticalLeaning.url.in_(urls))
