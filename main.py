@@ -399,23 +399,22 @@ def insert_media_bias_data():
     return None
 
 
+# TODO handle (by returning InvalidRequest):
+#   -  urls is not a list.
 @app.route("/bias/get", methods=["POST"])
 @handle_invalid_request
 def get_media_bias_data():
     request_data = request.get_json()
+    urls = get_or_throw(request_data, 'urls')
 
     with rollback_on_err():
-        url = get_domain_of_url(get_or_throw(request_data, 'url'))
 
-        row = DB.session.execute(
+        rows = DB.session.execute(
             DB.select(PoliticalLeaning)
-            .where(and_(PoliticalLeaning.url == url))
-        ).one_or_none()
+            .where(PoliticalLeaning.url.in_(urls))
+        ).all()
 
-    if row is None:
-        return None
-
-    return row[0].leaning.value
+    return [{'url': row[0].url, 'leaning': row[0].leaning} for row in rows]
 
 
 @app.route("/delete", methods=["POST"])
