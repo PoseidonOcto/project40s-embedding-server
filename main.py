@@ -107,7 +107,7 @@ class Interaction(DB.Model):
 
     @hybrid_property
     def domain_of_url(self):
-        return get_domain_of_url(str(self.url))
+        return get_domain_of_url(self.url)
 
 
 class PoliticalLeaning(DB.Model):
@@ -381,7 +381,7 @@ def get_user_interaction_data():
     return results
 
 
-@app.route("/bias/get_all", methods=["POST"])
+@app.route("/bias/add", methods=["POST"])
 @handle_invalid_request
 def insert_media_bias_data():
     request_data = request.get_json()
