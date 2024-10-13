@@ -367,7 +367,7 @@ def get_user_interaction_data():
         ).all()
 
     results = [{
-        'url': row[0].domain_of_url,
+        'url': row[0].url,
         'date': row[0].date_spent,
         'duration': row[0].duration_spent,
         'clicks': row[0].clicks,
