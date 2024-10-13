@@ -107,7 +107,7 @@ class Interaction(DB.Model):
 
     @hybrid_property
     def domain_of_url(self):
-        return get_domain_of_url(self.url)
+        return get_domain_of_url(str(self.url))
 
 
 class PoliticalLeaning(DB.Model):
@@ -118,6 +118,10 @@ class PoliticalLeaning(DB.Model):
     url = DB.Column(DB.String(255), primary_key=True)
 
     leaning = DB.Column(DB.Enum(PoliticalLeaningEnum), nullable=False)
+
+    @hybrid_property
+    def domain_of_url(self):
+        return get_domain_of_url(str(self.url))
 
 
 # Intialise the database
@@ -366,7 +370,8 @@ def get_user_interaction_data():
     with rollback_on_err():
         interactions = DB.session.execute(
             DB.select(Interaction, PoliticalLeaning)
-            .join_from(Interaction, PoliticalLeaning, Interaction.domain_of_url == PoliticalLeaning.url, isouter=True)
+            .join_from(Interaction, PoliticalLeaning, Interaction.domain_of_url == PoliticalLeaning.domain_of_url,
+                       isouter=True)
             .where(and_(Interaction.user_id == user_id))
         ).all()
 
