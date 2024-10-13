@@ -495,9 +495,9 @@ def delete_users_data():
         ).all()
 
         for row in interaction:
-            DB.session.delete(row)
+            DB.session.delete(row[0])
         for row in fact:
-            DB.session.delete(row)
+            DB.session.delete(row[0])
 
     return None
 
