@@ -370,7 +370,7 @@ def get_user_interaction_data():
         'date': row[0].date_spent,
         'duration': row[0].duration_spent,
         'clicks': row[0].clicks,
-        'leaning': row[1].leaning.value if row[1].leaning is not None else None,
+        'leaning': row[1].leaning.value if row[1] is not None else None,
     } for row in interactions]
 
     return results
