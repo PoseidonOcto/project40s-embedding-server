@@ -7,7 +7,6 @@ from pymilvus import MilvusClient
 from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, aliased
 from sqlalchemy import and_, func
 from enum import Enum
@@ -43,7 +42,6 @@ SEARCH_BATCH_SIZE = 10  # Max batch size for Zilliz api
 DEFAULT_SEARCH_SIMILARITY_THRESHOLD = 0.6
 
 # Postgres database hosted on railway, managed via Flask-SQLAlchemy.
-# DATABASE_URL = "postgresql://postgres:ARwfipSWhFFMhyyuJRNXgbagWUjmyriE@junction.proxy.rlwy.net:58065/railway"
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Optional, to suppress warnings
 
@@ -89,10 +87,6 @@ class Fact(DB.Model):
 
     earliest_date_triggered = DB.Column(DB.BigInteger, nullable=False)
 
-    # earliest_of_claim_id = column_property(
-    #     select(func.min(earliest_date_triggered)).where(user_id, claim_id).scalar_subquery()
-    # )
-
 
 class Interaction(DB.Model):
     """ Table storing user's media consumption. """
@@ -104,7 +98,7 @@ class Interaction(DB.Model):
 
     duration_spent = DB.Column(DB.Integer, nullable=False)
     clicks = DB.Column(DB.Integer, nullable=False)
-    domain = DB.Column(DB.String(255), nullable=False)  # A simple transformation of url.
+    domain = DB.Column(DB.String(255), nullable=False)  # A simple transformation of url (can't join on hybrid_property)
 
 
 class PoliticalLeaning(DB.Model):
