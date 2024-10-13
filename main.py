@@ -7,6 +7,7 @@ from pymilvus import MilvusClient
 from flask import Flask, request
 from markupsafe import escape
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, aliased
 from sqlalchemy import and_, func
 from enum import Enum
@@ -103,6 +104,10 @@ class Interaction(DB.Model):
 
     duration_spent = DB.Column(DB.Integer, nullable=False)
     clicks = DB.Column(DB.Integer, nullable=False)
+
+    @hybrid_property
+    def domain_of_url(self):
+        return get_domain_of_url(self.url)
 
 
 class PoliticalLeaning(DB.Model):
@@ -361,7 +366,7 @@ def get_user_interaction_data():
     with rollback_on_err():
         interactions = DB.session.execute(
             DB.select(Interaction, PoliticalLeaning)
-            .join_from(Interaction, PoliticalLeaning, Interaction.url == PoliticalLeaning.url, isouter=True)
+            .join_from(Interaction, PoliticalLeaning, Interaction.domain_of_url == PoliticalLeaning.url, isouter=True)
             .where(and_(Interaction.user_id == user_id))
         ).all()
 
