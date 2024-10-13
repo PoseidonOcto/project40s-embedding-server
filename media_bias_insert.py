@@ -25,7 +25,8 @@ def strip_off_start(text: str, text_to_strip: str) -> str:
 
 
 def get_domain_of_url(url: str) -> str:
-    return tldextract.extract(url).domain
+    extracted = tldextract.extract(url)
+    return extracted.domain + f".{extracted.suffix}" if extracted.suffix else ""
 
 def index_data_by_url(file):
     data: list = json.load(file)
