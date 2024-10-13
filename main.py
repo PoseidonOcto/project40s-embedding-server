@@ -104,10 +104,7 @@ class Interaction(DB.Model):
 
     duration_spent = DB.Column(DB.Integer, nullable=False)
     clicks = DB.Column(DB.Integer, nullable=False)
-
-    @hybrid_property
-    def domain_of_url(self):
-        return get_domain_of_url(str(self.url))
+    domain = DB.Column(DB.String(255), nullable=False)  # A simple transformation of url.
 
 
 class PoliticalLeaning(DB.Model):
@@ -118,10 +115,6 @@ class PoliticalLeaning(DB.Model):
     url = DB.Column(DB.String(255), primary_key=True)
 
     leaning = DB.Column(DB.Enum(PoliticalLeaningEnum), nullable=False)
-
-    @hybrid_property
-    def domain_of_url(self):
-        return get_domain_of_url(str(self.url))
 
 
 # Intialise the database
@@ -347,12 +340,14 @@ def get_all_facts():
 def add_user_interaction_data():
     request_data = request.get_json()
 
+    url = get_or_throw(request_data, 'url')
     new_data = Interaction(
         user_id=get_user_id(get_or_throw(request_data, 'oauth_token')),
-        url=get_or_throw(request_data, 'url'),
+        url=url,
         duration_spent=int(get_or_throw(request_data, 'duration_spent')),
         date_spent=int(get_or_throw(request_data, 'date_spent')),
         clicks=int(get_or_throw(request_data, 'clicks')),
+        domain=get_domain_of_url(url),
     )
 
     with rollback_on_err():
@@ -370,7 +365,7 @@ def get_user_interaction_data():
     with rollback_on_err():
         interactions = DB.session.execute(
             DB.select(Interaction, PoliticalLeaning)
-            .join_from(Interaction, PoliticalLeaning, Interaction.domain_of_url == PoliticalLeaning.domain_of_url,
+            .join_from(Interaction, PoliticalLeaning, Interaction.domain == PoliticalLeaning.url,
                        isouter=True)
             .where(and_(Interaction.user_id == user_id))
         ).all()
@@ -409,6 +404,7 @@ def insert_media_bias_data():
                 DB.session.add(PoliticalLeaning(url=url, leaning=bias_rating))
 
     return None
+
 
 # # TODO handle (by returning InvalidRequest):
 # #   -  urls is not a list.
