@@ -192,33 +192,6 @@ def recreate_tables():
     return None
 
 
-# @app.route("/users/create", methods=["POST"])
-# def user_create():
-#     request_data = request.get_json()
-#     try:
-#         entry = PoliticalLeaning(
-#             url=get_or_throw(request_data, 'url'),
-#             leaning=get_or_throw_enum(request_data, 'leaning', PoliticalLeaningEnum),
-#         )
-#         DB.session.add(entry)
-#         DB.session.commit()
-#         return {
-#             'status': 'success',
-#         }
-#     except InvalidRequest as e:
-#         return {
-#             'status': 'error',
-#             'message': str(e),
-#         }
-#
-#
-# @app.route("/get_all", methods=["POST"])
-# @handle_invalid_request
-# def get_all_data():
-#     result = DB.session.execute(DB.select(PoliticalLeaning).order_by(PoliticalLeaning.url)).all()
-#     return [(row.PoliticalLeaning.url, row.PoliticalLeaning.leaning.value) for row in result]
-
-
 def get_user_id(token: str) -> str:
     url = 'https://www.googleapis.com/oauth2/v2/userinfo'
     headers = {
@@ -276,21 +249,6 @@ def add_facts(user_id, data) -> int:
     return num_new_facts
 
 
-# # TODO handle (by returning InvalidRequest):
-# #   - 'data' is not an interable
-# #   - 'claim_id' or 'earliest_date_triggered' could not be converted to an int
-# @app.route("/facts/deprecated_add", methods=["POST"])
-# @handle_invalid_request
-# def add_facts_endpoint():
-#     request_data = request.get_json()
-#     user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
-#     data = get_or_throw(request_data, 'data')
-#
-#     add_facts(user_id, data)
-#
-#     return None
-
-
 @app.route("/facts/add", methods=["POST"])
 @handle_invalid_request
 def add_facts_endpoint():
@@ -310,23 +268,6 @@ def add_facts_endpoint():
                 'earliest_date_triggered': round(time.time() * 1000),
             })
     return add_facts(user_id, data)
-
-
-# @app.route("/facts/get_all", methods=["POST"])
-# @handle_invalid_request
-# def get_all_facts_deprecated():
-#     request_data = request.get_json()
-#     with rollback_on_err():
-#         user_id = get_user_id(get_or_throw(request_data, 'oauth_token'))
-#
-#         results = DB.session.execute(DB.select(Fact).where(
-#             and_(
-#                 Fact.user_id == user_id,
-#             )
-#         )).all()
-#
-#         return [(row.Fact.claim_id, row.Fact.url, row.Fact.triggering_text, row.Fact.earliest_date_triggered)
-#                 for row in results]
 
 
 @app.route("/facts/get", methods=["POST"])
