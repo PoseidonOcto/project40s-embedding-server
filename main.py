@@ -494,8 +494,10 @@ def delete_users_data():
             .where(and_(Fact.user_id == user_id))
         ).all()
 
-        DB.session.delete(interaction)
-        DB.session.delete(fact)
+        for row in interaction:
+            DB.session.delete(row)
+        for row in fact:
+            DB.session.delete(row)
 
     return None
 
