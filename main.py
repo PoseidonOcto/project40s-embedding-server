@@ -107,7 +107,7 @@ class Interaction(DB.Model):
 
     @hybrid_property
     def domain_of_url(self):
-        return get_domain_of_url(self.url)
+        return get_domain_of_url(str(self.url))
 
 
 class PoliticalLeaning(DB.Model):
