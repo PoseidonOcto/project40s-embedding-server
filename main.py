@@ -98,7 +98,9 @@ class Interaction(DB.Model):
 
     duration_spent = DB.Column(DB.Integer, nullable=False)
     clicks = DB.Column(DB.Integer, nullable=False)
-    domain = DB.Column(DB.String(255), nullable=False)  # A simple transformation of url (can't join on hybrid_property)
+    # A simple transformation of url (can't join on hybrid_property).
+    # TODO inefficient: could be in separate table with url.
+    domain = DB.Column(DB.String(255), nullable=False)
 
 
 class PoliticalLeaning(DB.Model):
