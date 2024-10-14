@@ -359,7 +359,7 @@ def get_user_interaction_data():
     with rollback_on_err():
         interactions = DB.session.execute(
             DB.select(Interaction, PoliticalLeaning)
-            .join_from(Interaction, PoliticalLeaning, Interaction == PoliticalLeaning.url, isouter=True)
+            .join_from(Interaction, PoliticalLeaning, Interaction.url == PoliticalLeaning.url, isouter=True)
             .where(and_(Interaction.user_id == user_id))
         ).all()
 
