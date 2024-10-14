@@ -98,9 +98,6 @@ class Interaction(DB.Model):
 
     duration_spent = DB.Column(DB.Integer, nullable=False)
     clicks = DB.Column(DB.Integer, nullable=False)
-    # A simple transformation of url (can't join on hybrid_property).
-    # TODO inefficient: could be in separate table with url.
-    domain = DB.Column(DB.String(255), nullable=False)
 
 
 class PoliticalLeaning(DB.Model):
@@ -336,17 +333,18 @@ def get_all_facts():
 def add_user_interaction_data():
     request_data = request.get_json()
 
-    url = get_or_throw(request_data, 'url')
     new_data = Interaction(
         user_id=get_user_id(get_or_throw(request_data, 'oauth_token')),
-        url=url,
+        url=get_domain_of_url(get_or_throw(request_data, 'url')),
         duration_spent=int(get_or_throw(request_data, 'duration_spent')),
         date_spent=int(get_or_throw(request_data, 'date_spent')),
         clicks=int(get_or_throw(request_data, 'clicks')),
-        domain=get_domain_of_url(url),
     )
 
     with rollback_on_err():
+        # TODO This could result in a primary key conflict, since user could in the same millisecond switch
+        #      between two tabs that that have the same domain.
+        #      This results in an unnecessary error thrown.
         DB.session.add(new_data)
 
 
@@ -361,8 +359,7 @@ def get_user_interaction_data():
     with rollback_on_err():
         interactions = DB.session.execute(
             DB.select(Interaction, PoliticalLeaning)
-            .join_from(Interaction, PoliticalLeaning, Interaction.domain == PoliticalLeaning.url,
-                       isouter=True)
+            .join_from(Interaction, PoliticalLeaning, Interaction == PoliticalLeaning.url, isouter=True)
             .where(and_(Interaction.user_id == user_id))
         ).all()
 
