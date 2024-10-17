@@ -347,7 +347,7 @@ def add_user_interaction_data():
             .where(and_(Interaction.user_id == new_data.user_id, Interaction.url == new_data.url,
                         Interaction.date_spent == new_data.date_spent))
         ).one_or_none()
-        if existing_entry is not None:
+        if existing_entry is None:
             DB.session.add(new_data)
 
 
