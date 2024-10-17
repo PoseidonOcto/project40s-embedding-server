@@ -342,10 +342,13 @@ def add_user_interaction_data():
     )
 
     with rollback_on_err():
-        # TODO This could result in a primary key conflict, since user could in the same millisecond switch
-        #      between two tabs that that have the same domain.
-        #      This results in an unnecessary error thrown.
-        DB.session.add(new_data)
+        existing_entry = DB.session.execute(
+            DB.select(Interaction)
+            .where(and_(Interaction.user_id == new_data.user_id, Interaction.url == new_data.url,
+                        Interaction.date_spent == new_data.date_spent))
+        ).one_or_none()
+        if existing_entry is not None:
+            DB.session.add(new_data)
 
 
 # TODO handle (by returning InvalidRequest):
