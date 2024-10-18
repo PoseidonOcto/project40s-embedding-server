@@ -16,9 +16,8 @@ import requests
 from media_bias_insert import index_data_by_url, get_domain_of_url
 
 """
-API Server handling data storage and 'similar claim detection' for project40s.
-Note that this file should not be made public while it holds private API keys.
-Private API keys could instead be stored in environment variables on Railway if this repo must be made public.
+API Server handling data storage and 'similar claim detection' for the Stop The Cap extension.
+Environment variables on Railway store sensitive information such as API keys.
 """
 app = Flask(__name__)
 
@@ -91,7 +90,7 @@ class Fact(DB.Model):
 class Interaction(DB.Model):
     """ Table storing user's media consumption. """
     __tablename__ = 'interaction'
-    # Composite key: 'id of user' and 'url'
+    # Composite key: 'id of user', 'url', and 'date_spent'
     user_id = DB.Column(DB.Text, primary_key=True)
     url = DB.Column(DB.String(255), primary_key=True)
     date_spent = DB.Column(DB.BigInteger, primary_key=True)
@@ -101,7 +100,7 @@ class Interaction(DB.Model):
 
 
 class PoliticalLeaning(DB.Model):
-    """ Table storing political leanings of various websites, sourced from TODO """
+    """ Table storing political leanings of various websites, sourced from mediabiasfactcheck.com """
     __tablename__ = 'political_leaning'
 
     # Primary key: 'url'
@@ -110,7 +109,7 @@ class PoliticalLeaning(DB.Model):
     leaning = DB.Column(DB.Enum(PoliticalLeaningEnum), nullable=False)
 
 
-# Intialise the database
+# Initialise the database
 with app.app_context():
     DB.create_all()
 
@@ -166,6 +165,10 @@ def check_password(request_data):
 
 @contextmanager
 def rollback_on_err():
+    """
+    Wrap any python code that interacts with the database with this context manager
+    to ensure that changes will be rolled back on an error occurring.
+    """
     try:
         yield
     except Exception:
@@ -326,8 +329,6 @@ def get_all_facts():
     } for claim_id, triggers in results.items()]
 
 
-# TODO handle (by returning InvalidRequest):
-#   -  fields could not be converted to an int
 @app.route("/user_interaction/add", methods=["POST"])
 @handle_invalid_request
 def add_user_interaction_data():
@@ -351,8 +352,6 @@ def add_user_interaction_data():
             DB.session.add(new_data)
 
 
-# TODO handle (by returning InvalidRequest):
-#   -  fields could not be converted to an int
 @app.route("/user_interaction/get", methods=["POST"])
 @handle_invalid_request
 def get_user_interaction_data():
@@ -400,23 +399,6 @@ def insert_media_bias_data():
                 DB.session.add(PoliticalLeaning(url=url, leaning=bias_rating))
 
     return None
-
-
-# # TODO handle (by returning InvalidRequest):
-# #   -  urls is not a list.
-# @app.route("/bias/get", methods=["POST"])
-# @handle_invalid_request
-# def get_media_bias_data():
-#     request_data = request.get_json()
-#     urls = get_or_throw(request_data, 'urls')
-#
-#     with rollback_on_err():
-#         rows = DB.session.execute(
-#             DB.select(PoliticalLeaning)
-#             .where(PoliticalLeaning.url.in_(urls))
-#         ).all()
-#
-#     return [{'url': row[0].url, 'leaning': row[0].leaning} for row in rows]
 
 
 @app.route("/delete", methods=["POST"])
